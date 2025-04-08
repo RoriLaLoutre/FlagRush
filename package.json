@@ -2,6 +2,7 @@
   "name": "hackaton",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -19,6 +20,10 @@
   "homepage": "https://github.com/RoriLaLoutre/FlagRush#readme",
   "dependencies": {
     "express": "^5.1.0",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "three": "^0.175.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.5"
   }
 }
