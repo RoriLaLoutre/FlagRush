@@ -1,0 +1,140 @@
+
+======================================================================================
+
+Contenu du fichier : public\index.html
+
+======================================================================================
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>FlagRush</title>
+    <style>
+      body { margin: 0; }
+    </style>
+  </head>
+  <body>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>0
+======================================================================================
+
+Contenu du fichier : public\main.js
+
+======================================================================================
+
+const socket = io('http://192.168.208.1:3000');
+// création de la scène
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb); // bleu ciel
+
+// Création de la caméra
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,  
+  1000
+);
+camera.position.set(0, 2, 5); // Légèrement en hauteur pour voir les cubes et le sol
+
+// Création du moteur de rendu
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Cube vert
+const geometry = new THREE.BoxGeometry();
+const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
+
+// Sol noir
+const planeGeometry = new THREE.PlaneGeometry(100, 100);
+const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const floor = new THREE.Mesh(planeGeometry, planeMaterial);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+
+socket.on("position", (pos) => {
+  cube.position.set(pos.x, pos.y, pos.z);
+});
+
+// Gestion des déplacements
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") cube.position.x += 0.1;
+  if (e.key === "ArrowLeft") cube.position.x -= 0.1;
+
+  // Envoie de la nouvelle position au serveur
+  socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
+});
+
+// Mise à jour de la position du cube pour tous les clients
+socket.on("move-cube", (pos) => {
+  cube.position.set(pos.x, pos.y, pos.z); // Mise à jour de la position du cube pour tous les clients
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+animate();
+0
+======================================================================================
+
+Contenu du fichier : server.js
+
+======================================================================================
+import express from 'express';
+import {Server} from 'socket.io';
+import {createServer} from 'http';
+
+const app = express();
+const server = createServer(app);
+const io = new Server(server)
+
+app.use(express.static("public"));
+
+let cube1Position = { x: 0, y: 0, z: 0 };
+
+io.on('connection', (socket) => {
+    console.log("User connected", socket.id);
+    
+    // Envoie de la position initiale du cube
+    socket.emit("position", cube1Position);
+
+    // Écoute et mise à jour de la position du cube
+    socket.on("move-cube", (position) => {
+        cube1Position = position; // Mise à jour de la position du cube
+        io.emit("move-cube", cube1Position); // Envoie la nouvelle position à tous les clients
+    });
+
+    socket.on('disconnect', () => {
+        console.log("User disconnected", socket.id);
+    });
+});
+
+server.listen(3000, () => {
+    console.log("Server running on http://192.168.208.1:3000");
+});
+
+0
+======================================================================================
+
+Contenu du fichier : style.css
+
+======================================================================================
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+0
