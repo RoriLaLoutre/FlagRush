@@ -1,5 +1,5 @@
 
-const socket = io('http://10.3.217.143:3000');
+const socket = io('http://127.0.0.1:999');
 // création de la scène
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); // bleu ciel
@@ -19,10 +19,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Cube vert
-const geometry = new THREE.BoxGeometry();
+const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
+cube.position.set(0, 0.44, 0); // Position initiale du cube
 
 // Sol noir
 const planeGeometry = new THREE.PlaneGeometry(100, 100);
@@ -62,13 +63,41 @@ socket.on("move-cube", (pos) => {
   cube.position.set(pos.x, pos.y, pos.z);
 });
 
-function jump(jumpHeight=1 , base_position_y , jumpSpeed=0.1) {
-  while (cube.position.y < base_position_y + jumpHeight) {
-    cube.position.y += 0.1 * jumpSpeed;
+const jumpStatus = {
+  isJumping: false,
+  startTime: 0,
+  duration: 650,
+  startY: 0,
+};
+
+function startJump() {
+  if (!jumpStatus.isJumping) {
+    jumpStatus.isJumping = true;
+    jumpStatus.startTime = performance.now();
+    jumpStatus.startY = cube.position.y;
   }
 }
 
-function animate() {
+function updateJump(currentTime) {
+  if (!jumpStatus.isJumping) return;
+
+  const elapsed = currentTime - jumpStatus.startTime;
+  const t = elapsed / jumpStatus.duration;
+
+  if (t >= 1) {
+    cube.position.y = jumpStatus.startY;
+    jumpStatus.isJumping = false;
+    return;
+  }
+
+  // x va de -1 à 1
+  const x = 2 * t - 1;
+  const y = -x * x + 1;
+
+  cube.position.y = jumpStatus.startY + y;
+}
+
+function animate(currentTime) {
   requestAnimationFrame(animate);
 
   if (keys.KeyW) {
@@ -88,13 +117,23 @@ function animate() {
     socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
   }
   if (keys.Space) {
-    jump(1, cube.position.y);
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
+    startJump();
   }
+
+  // Met à jour le saut en fonction du temps
+  updateJump(currentTime);
+
+  // Emit à chaque frame (optimisable si besoin)
+  socket.emit("move-cube", {
+    x: cube.position.x,
+    y: cube.position.y,
+    z: cube.position.z,
+  });
   if (keys.ShiftLeft) {
     cube.position.y -= 0.1;
     socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
   }
+  console.log(cube.position.y);
 
   renderer.render(scene, camera);
 }

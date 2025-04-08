@@ -4,11 +4,20 @@ import {createServer} from 'http';
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server)
+// const io = new Server(server)
+
+const io = new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
+  
+  app.use(express.static("public"));
 
 app.use(express.static("public"));
 
-let cube1Position = { x: 0, y: 0, z: 0 };
+let cube1Position = { x: 0, y: 0.44, z: 0 };
 
 io.on('connection', (socket) => {
     console.log("User connected", socket.id);
@@ -27,7 +36,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => {
-    console.log("Server running on http://10.3.217.143:3000");
+server.listen(999, () => {
+    console.log("Server running on http://127.0.0.1:999");
 });
 
