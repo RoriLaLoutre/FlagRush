@@ -57,7 +57,8 @@ io.on('connection', (socket) => {
 });
 
 
-server.listen(999, () => {
-    console.log("Server running on http://localhost:999/");
+server.listen(8080, () => {
+    console.log("Server running on http://51.210.103.122:8080/");
+
 });
 
