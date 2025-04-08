@@ -1,5 +1,5 @@
 
-const socket = io('http://localhost:999/');
+const socket = io('http://51.210.103.122:8080/');
 
 let myPlayer = null;
 let myCube = null;
