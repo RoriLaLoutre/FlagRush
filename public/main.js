@@ -47,14 +47,10 @@ socket.on("player-assigned", (player) => {
   myCube = myPlayer === "player1" ? greenCube : redCube;
 });
 
-const targetPositions = {
-  player1: { x: 0, y: 0.44, z: 0 },
-  player2: { x: 2, y: 0.44, z: 0 },
-};
+greenCube.position.set(0, 0.44, 0)
+redCube.position.set(1, 0.44, 0)
 
 socket.on("update-positions", (positions) => {
-  targetPositions.player1 = positions.Player1Position;
-  targetPositions.player2 = positions.Player2Position;
   greenCube.position.set(
     positions.Player1Position.x,
     positions.Player1Position.y,
@@ -135,14 +131,8 @@ function updateJump(currentTime) {
   myCube.position.y = jumpStatus.startY + y;
 }
 
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
 function animate(currentTime) {
   requestAnimationFrame(animate);
-
-  const smoothing = 0.1;
 
   if (keys.KeyW) myCube.position.z -= 0.1;
   if (keys.KeyS) myCube.position.z += 0.1;
@@ -156,13 +146,7 @@ function animate(currentTime) {
 
   sendMyPosition();
 
-  const otherPlayer = myPlayer === "player1" ? "player2" : "player1";
-  const otherCube = myPlayer === "player1" ? redCube : greenCube;
-  const target = targetPositions[otherPlayer];
-
-  otherCube.position.x = lerp(otherCube.position.x, target.x, smoothing);
-  otherCube.position.y = lerp(otherCube.position.y, target.y, smoothing);
-  otherCube.position.z = lerp(otherCube.position.z, target.z, smoothing);
+  console.log(myCube.position.y);
 
   renderer.render(scene, camera);
 }
