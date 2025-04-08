@@ -47,6 +47,9 @@ socket.on("player-assigned", (player) => {
   myCube = myPlayer === "player1" ? greenCube : redCube;
 });
 
+greenCube.position.set(0, 0.44, 0)
+redCube.position.set(1, 0.44, 0)
+
 socket.on("update-positions", (positions) => {
   greenCube.position.set(
     positions[myPlayer].x,
