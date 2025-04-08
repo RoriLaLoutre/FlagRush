@@ -1,5 +1,5 @@
 
-const socket = io('http://127.0.0.1:999');
+const socket = io('http://51.210.103.122:8080/');
 
 let myPlayer = null;
 let myCube = null;
@@ -52,16 +52,15 @@ redCube.position.set(1, 0.44, 0)
 
 socket.on("update-positions", (positions) => {
   greenCube.position.set(
-    positions[myPlayer].x,
-    positions[myPlayer].y,
-    positions[myPlayer].z
+    positions.Player1Position.x,
+    positions.Player1Position.y,
+    positions.Player1Position.z
   );
 
-  const otherPlayer = myPlayer === 'player1' ? 'player2' : 'player1';
   redCube.position.set(
-    positions[otherPlayer].x,
-    positions[otherPlayer].y,
-    positions[otherPlayer].z
+    positions.Player2Position.x,
+    positions.Player2Position.y,
+    positions.Player2Position.z
   );
 });
 

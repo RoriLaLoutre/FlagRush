@@ -43,7 +43,8 @@ io.on('connection', (socket) => {
         const player = players[socket.id]; // Met à jour la position du cube du joueur
         if (!player) return;
 
-        cubePositions[player] = position;
+        const key = player === "player1" ? "Player1Position" : "Player2Position";
+        cubePositions[key] = position;
         io.emit("update-positions", cubePositions); // broadcast new positions
     });
 
@@ -57,6 +58,6 @@ io.on('connection', (socket) => {
 
 
 server.listen(999, () => {
-    console.log("Server running on http://127.0.0.1:999");
+    console.log("Server running on http://51.210.103.122:8080/");
 });
 
