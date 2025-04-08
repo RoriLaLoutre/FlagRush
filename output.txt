@@ -12,6 +12,7 @@ Contenu du fichier : public\index.html
     <style>
       body { margin: 0; }
     </style>
+      <link rel="stylesheet" href="style.css">
   </head>
   <body>
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
@@ -25,7 +26,7 @@ Contenu du fichier : public\main.js
 
 ======================================================================================
 
-const socket = io('http://192.168.208.1:3000');
+const socket = io('http://127.0.0.1:999');
 // création de la scène
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); // bleu ciel
@@ -45,10 +46,11 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Cube vert
-const geometry = new THREE.BoxGeometry();
+const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
 const cube = new THREE.Mesh(geometry, material);
 scene.add(cube);
+cube.position.set(0, 0.44, 0); // Position initiale du cube
 
 // Sol noir
 const planeGeometry = new THREE.PlaneGeometry(100, 100);
@@ -58,30 +60,132 @@ floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
 
+const keys = {
+  KeyW: false,
+  KeyS: false,
+  KeyA: false,
+  KeyD: false,
+  Space: false,
+  ShiftLeft: false,
+};
+
+document.addEventListener("keydown", (e) => {
+  if (e.code in keys) {
+    keys[e.code] = true;
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.code in keys) {
+    keys[e.code] = false;
+  }
+});
+
 socket.on("position", (pos) => {
   cube.position.set(pos.x, pos.y, pos.z);
 });
 
-// Gestion des déplacements
-document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowRight") cube.position.x += 0.1;
-  if (e.key === "ArrowLeft") cube.position.x -= 0.1;
 
-  // Envoie de la nouvelle position au serveur
-  socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-});
-
-// Mise à jour de la position du cube pour tous les clients
 socket.on("move-cube", (pos) => {
-  cube.position.set(pos.x, pos.y, pos.z); // Mise à jour de la position du cube pour tous les clients
+  cube.position.set(pos.x, pos.y, pos.z);
 });
 
-function animate() {
+const jumpStatus = {
+  isJumping: false,
+  startTime: 0,
+  duration: 650,
+  startY: 0,
+};
+
+function startJump() {
+  if (!jumpStatus.isJumping) {
+    jumpStatus.isJumping = true;
+    jumpStatus.startTime = performance.now();
+    jumpStatus.startY = cube.position.y;
+  }
+}
+
+function updateJump(currentTime) {
+  if (!jumpStatus.isJumping) return;
+
+  const elapsed = currentTime - jumpStatus.startTime;
+  const t = elapsed / jumpStatus.duration;
+
+  if (t >= 1) {
+    cube.position.y = jumpStatus.startY;
+    jumpStatus.isJumping = false;
+    return;
+  }
+
+  // x va de -1 à 1
+  const x = 2 * t - 1;
+  const y = -x * x + 1;
+
+  cube.position.y = jumpStatus.startY + y;
+}
+
+function animate(currentTime) {
   requestAnimationFrame(animate);
+
+  if (keys.KeyW) {
+    cube.position.z -= 0.1;
+    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
+  }
+  if (keys.KeyS) {
+    cube.position.z += 0.1;
+    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
+  }
+  if (keys.KeyA) {
+    cube.position.x -= 0.1;
+    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
+  }
+  if (keys.KeyD) {
+    cube.position.x += 0.1;
+    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
+  }
+  if (keys.Space) {
+    startJump();
+  }
+
+  // Met à jour le saut en fonction du temps
+  updateJump(currentTime);
+
+  // Emit à chaque frame (optimisable si besoin)
+  socket.emit("move-cube", {
+    x: cube.position.x,
+    y: cube.position.y,
+    z: cube.position.z,
+  });
+  if (keys.ShiftLeft) {
+    cube.position.y -= 0.1;
+    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
+  }
+  console.log(cube.position.y);
+
   renderer.render(scene, camera);
 }
 
 animate();
+0
+======================================================================================
+
+Contenu du fichier : public\style.css
+
+======================================================================================
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+.inner::-webkit-scrollbar {
+  display: none;
+}
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
 0
 ======================================================================================
 
@@ -94,19 +198,28 @@ import {createServer} from 'http';
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server)
+// const io = new Server(server)
+
+const io = new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
+  
+  app.use(express.static("public"));
 
 app.use(express.static("public"));
 
-let cube1Position = { x: 0, y: 0, z: 0 };
+let cube1Position = { x: 0, y: 0.44, z: 0 };
 
 io.on('connection', (socket) => {
     console.log("User connected", socket.id);
     
-    // Envoie de la position initiale du cube
+
     socket.emit("position", cube1Position);
 
-    // Écoute et mise à jour de la position du cube
+
     socket.on("move-cube", (position) => {
         cube1Position = position; // Mise à jour de la position du cube
         io.emit("move-cube", cube1Position); // Envoie la nouvelle position à tous les clients
@@ -117,24 +230,8 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => {
-    console.log("Server running on http://192.168.208.1:3000");
+server.listen(999, () => {
+    console.log("Server running on http://127.0.0.1:999");
 });
 
-0
-======================================================================================
-
-Contenu du fichier : style.css
-
-======================================================================================
-body {
-  margin: 0;
-  overflow: hidden;
-}
-
-canvas {
-  display: block;
-  width: 100vw;
-  height: 100vh;
-}
 0

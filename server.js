@@ -4,7 +4,6 @@ import {createServer} from 'http';
 
 const app = express();
 const server = createServer(app);
-// const io = new Server(server)
 
 const io = new Server(server, {
     cors: {
@@ -17,24 +16,45 @@ const io = new Server(server, {
 
 app.use(express.static("public"));
 
-let cube1Position = { x: 0, y: 0.44, z: 0 };
+let players = {}; // socket.id -> player number
+let cubePositions = {
+    Player1Position: { x: 0, y: 0.44, z: 0 },
+    Player2Position: { x: 2, y: 0.44, z: 0 },
+};
 
 io.on('connection', (socket) => {
-    console.log("User connected", socket.id);
-    
 
-    socket.emit("position", cube1Position);
+    const connectedCount = Object.keys(players).length;
+    if (connectedCount > 2) {                                             //limite le nombre de joueurs à 2
+        console.log("Server full, disconnecting user", socket.id);
+        socket.emit("error", "Game is full"); // envoie un message d'erreur au client
+        socket.disconnect(true);
+    }
+    const playerNumber = connectedCount === 0 ? 'player1' : 'player2';  // si personne n'est co alors : playerNumber = player1 sinon player2
+    players[socket.id] = playerNumber; // associe le socket.id au numéro du joueur
+
+    console.log(`Player ${playerNumber} connected:`);
+     
+    socket.emit("player-assigned", playerNumber);
+    io.emit("update-positions", cubePositions);  // donne la position initiale des cubes aux clients connectés
 
 
     socket.on("move-cube", (position) => {
-        cube1Position = position; // Mise à jour de la position du cube
-        io.emit("move-cube", cube1Position); // Envoie la nouvelle position à tous les clients
+        const player = players[socket.id]; // Met à jour la position du cube du joueur
+        if (!player) return;
+
+        cubePositions[player] = position;
+        io.emit("update-positions", cubePositions); // broadcast new positions
     });
 
-    socket.on('disconnect', () => {
-        console.log("User disconnected", socket.id);
-    });
+
+    socket.on("disconnect", () => {
+        const player = players[socket.id];
+        delete players[socket.id];
+        console.log(`Player ${player} disconnected:`, socket.id);
+      });
 });
+
 
 server.listen(999, () => {
     console.log("Server running on http://127.0.0.1:999");

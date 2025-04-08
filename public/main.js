@@ -1,5 +1,9 @@
 
 const socket = io('http://127.0.0.1:999');
+
+let myPlayer = null;
+let myCube = null;
+
 // création de la scène
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); // bleu ciel
@@ -19,11 +23,17 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Cube vert
-const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
-cube.position.set(0, 0.44, 0); // Position initiale du cube
+const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);  // diemension des cubes joueurs
+
+const materialGreen = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const materialRed = new THREE.MeshBasicMaterial({ color: 0xff0000  });
+
+const greenCube = new THREE.Mesh(geometry, materialGreen);
+const redCube = new THREE.Mesh(geometry, materialRed);
+
+
+scene.add(greenCube);
+scene.add(redCube);
 
 // Sol noir
 const planeGeometry = new THREE.PlaneGeometry(100, 100);
@@ -31,6 +41,36 @@ const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
 const floor = new THREE.Mesh(planeGeometry, planeMaterial);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
+
+socket.on("player-assigned", (player) => {
+  myPlayer = player;
+  myCube = myPlayer === "player1" ? greenCube : redCube;
+});
+
+socket.on("update-positions", (positions) => {
+  greenCube.position.set(
+    positions[myPlayer].x,
+    positions[myPlayer].y,
+    positions[myPlayer].z
+  );
+
+  const otherPlayer = myPlayer === 'player1' ? 'player2' : 'player1';
+  redCube.position.set(
+    positions[otherPlayer].x,
+    positions[otherPlayer].y,
+    positions[otherPlayer].z
+  );
+});
+
+
+function sendMyPosition() {
+  if (!myPlayer) return;
+  socket.emit("move-cube", {
+    x: myCube.position.x,
+    y: myCube.position.y,
+    z: myCube.position.z,
+  });
+}
 
 
 const keys = {
@@ -54,14 +94,6 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
-socket.on("position", (pos) => {
-  cube.position.set(pos.x, pos.y, pos.z);
-});
-
-
-socket.on("move-cube", (pos) => {
-  cube.position.set(pos.x, pos.y, pos.z);
-});
 
 const jumpStatus = {
   isJumping: false,
@@ -74,7 +106,7 @@ function startJump() {
   if (!jumpStatus.isJumping) {
     jumpStatus.isJumping = true;
     jumpStatus.startTime = performance.now();
-    jumpStatus.startY = cube.position.y;
+    jumpStatus.startY = myCube.position.y;
   }
 }
 
@@ -85,7 +117,7 @@ function updateJump(currentTime) {
   const t = elapsed / jumpStatus.duration;
 
   if (t >= 1) {
-    cube.position.y = jumpStatus.startY;
+    myCube.position.y = jumpStatus.startY;
     jumpStatus.isJumping = false;
     return;
   }
@@ -94,46 +126,25 @@ function updateJump(currentTime) {
   const x = 2 * t - 1;
   const y = -x * x + 1;
 
-  cube.position.y = jumpStatus.startY + y;
+  myCube.position.y = jumpStatus.startY + y;
 }
 
 function animate(currentTime) {
   requestAnimationFrame(animate);
 
-  if (keys.KeyW) {
-    cube.position.z -= 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  if (keys.KeyS) {
-    cube.position.z += 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  if (keys.KeyA) {
-    cube.position.x -= 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  if (keys.KeyD) {
-    cube.position.x += 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  if (keys.Space) {
-    startJump();
-  }
+  if (keys.KeyW) myCube.position.z -= 0.1;
+  if (keys.KeyS) myCube.position.z += 0.1;
+  if (keys.KeyA) myCube.position.x -= 0.1;
+  if (keys.KeyD) myCube.position.x += 0.1;
+  if (keys.Space) startJump();
+  if (keys.ShiftLeft) myCube.position.y -= 0.1;
 
-  // Met à jour le saut en fonction du temps
+
   updateJump(currentTime);
 
-  // Emit à chaque frame (optimisable si besoin)
-  socket.emit("move-cube", {
-    x: cube.position.x,
-    y: cube.position.y,
-    z: cube.position.z,
-  });
-  if (keys.ShiftLeft) {
-    cube.position.y -= 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  console.log(cube.position.y);
+  sendMyPosition();
+
+  console.log(myCube.position.y);
 
   renderer.render(scene, camera);
 }
