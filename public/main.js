@@ -1,5 +1,6 @@
 import * as THREE from "https://esm.sh/three@0.160";
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+import { createMurs } from './map/map.js';
 import { speed , taille_map , local , server, pesanteur} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
@@ -64,6 +65,8 @@ const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
 const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
 
 groundMesh.position.set(0, -0.1, 0); 
+// Creations des murs
+createMurs(scene, world);
 
 // physical ground
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
