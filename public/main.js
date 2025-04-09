@@ -6,7 +6,7 @@ import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
 
 
-const socket = io(local); // a changer en server pour héberger le jeu
+const socket = io(server); // a changer en server pour héberger le jeu
 
 
 let myPlayer = null;
