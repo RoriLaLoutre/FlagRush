@@ -1,5 +1,6 @@
 import * as THREE from "https://esm.sh/three@0.160";
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+import { createMurs } from './map/map.js';
 import { speed , taille_map , local , server, pesanteur} from "./constant.js";
 const socket = io(local); // a changer en server pour héberger le jeu
 let myPlayer = null;
@@ -69,6 +70,10 @@ const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
 groundMesh.position.set(0, -0.1, 0); 
 
 scene.add(groundMesh);
+
+// Creations des murs
+createMurs(scene, world);
+
 
 // physical ground
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
@@ -182,7 +187,7 @@ function animate() {
 
   sendMyPosition();
 
-  renderer.render(scene, camera);
+  renderer.render(scene, camera2d);
 }
 
 
