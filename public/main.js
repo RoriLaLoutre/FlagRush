@@ -1,16 +1,15 @@
-import * as THREE from "https://esm.sh/three@0.152.2";
+import * as THREE from "https://esm.sh/three@0.160";
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
-
-const socket = io("http://localhost:3000/");
-
+import { speed , taille_map , local , server, pesanteur} from "./constant.js";
+const socket = io(local); // a changer en server pour héberger le jeu
 let myPlayer = null;
 let myCube = null;
 let myBody = null;
-let isJumping = null; // pour éviter les sauts multiples
+let isJumping;
 
 let world;
 await RAPIER.init();
-const gravity = { x: 0, y: -175, z: 0 };
+const gravity = { x: 0, y: pesanteur, z: 0 };
 world = new RAPIER.World(gravity);
 
 
@@ -63,7 +62,7 @@ scene.add(greenCube);
 scene.add(redCube);
 
 // visual ground
-const groundGeometry = new THREE.BoxGeometry(100, 0.2, 100); 
+const groundGeometry = new THREE.BoxGeometry(taille_map*2, 0.2, taille_map*2); 
 const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
 const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
 
@@ -74,7 +73,7 @@ scene.add(groundMesh);
 // physical ground
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
 const groundBody = world.createRigidBody(groundDesc);
-const groundCollider = RAPIER.ColliderDesc.cuboid(50, 0.1, 50);
+const groundCollider = RAPIER.ColliderDesc.cuboid(taille_map, 0.1, taille_map);
 world.createCollider(groundCollider, groundBody);
 
 socket.on("player-assigned", (player) => {
@@ -143,8 +142,6 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
-let movement = { x: 0, y: 0, z: 0 };
-const speed = 4;
 
 function updateJump(){
   if (myBody) {

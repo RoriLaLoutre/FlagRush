@@ -1,6 +1,7 @@
 import express from 'express';
 import {Server} from 'socket.io';
 import {createServer} from 'http';
+import {port, local} from './public/constant.js'; // importation des constantes
 
 const app = express();
 const server = createServer(app);
@@ -57,8 +58,8 @@ io.on('connection', (socket) => {
 });
 
 
-server.listen(3000, () => {
-    console.log("Server running on http://localhost:3000/");
+server.listen(port, () => {
+    console.log(`Server running on ${local}`);
 
 });
 
