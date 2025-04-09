@@ -32,7 +32,7 @@ export function createMurs(scene, world) {
   
     murs.forEach(mur => {
       const geometry = new THREE.BoxGeometry(mur.w, hauteur, mur.d);
-      const material = new THREE.MeshBasicMaterial({ color: 0xcb6ce6 });
+      const material = new THREE.MeshStandardMaterial({ color: 0xcb6ce6 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(mur.x, mur.y, mur.z);
       scene.add(mesh);
