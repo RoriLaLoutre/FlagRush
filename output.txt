@@ -7,27 +7,51 @@ Contenu du fichier : public\index.html
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>FlagRush</title>
     <style>
-      body { margin: 0; }
+      body {
+        margin: 0;
+      }
     </style>
-      <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="main.js"></script>
+    <script type="module">
+      import * as THREE from "https://esm.sh/three@0.152.2";
+      import init, * as RAPIER from "https://cdn.skypack.dev/@dimforge/rapier3d-compat";
+
+      window.THREE = THREE;
+      window.RAPIER = RAPIER;
+
+      // Now import main.js after initialization
+      import "./main.js";
+    </script>
   </body>
-</html>0
+</html>
+0
 ======================================================================================
 
 Contenu du fichier : public\main.js
 
 ======================================================================================
+await init()
+const socket = io('http://localhost:3000/');
 
-const socket = io('http://127.0.0.1:999');
-// création de la scène
+let myPlayer = null;
+let myCube = null;
+let myBody = null;
+
+// init rapier world
+let world;
+await init();
+
+const gravity = { x: 0, y: -9.81, z: 0 };
+world = new RAPIER.World(gravity);
+
+
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); // bleu ciel
 
@@ -45,19 +69,94 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Cube vert
-const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
-cube.position.set(0, 0.44, 0); // Position initiale du cube
 
-// Sol noir
-const planeGeometry = new THREE.PlaneGeometry(100, 100);
-const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-const floor = new THREE.Mesh(planeGeometry, planeMaterial);
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
+const playerBodies = {   // ici que seront les corps physiques des joueurs
+  player1: null,
+  player2: null,
+};
+
+// player1
+const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 1, 0);
+playerBodies.player1 = world.createRigidBody(player1Desc);
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player1);
+
+// player2
+const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 1, 0);  
+playerBodies.player2 = world.createRigidBody(player2Desc);  
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
+
+world.step();
+
+// Cube vert et rouge
+const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);  // diemension des cubes joueurs
+
+const materialGreen = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const materialRed = new THREE.MeshBasicMaterial({ color: 0xff0000  });
+
+const greenCube = new THREE.Mesh(geometry, materialGreen);
+const redCube = new THREE.Mesh(geometry, materialRed);
+
+scene.add(greenCube);
+scene.add(redCube);
+
+// visual ground
+const groundGeometry = new THREE.BoxGeometry(100, 0.2, 100); 
+const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
+const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+
+groundMesh.position.set(0, -0.1, 0); 
+
+scene.add(groundMesh);
+
+// physical ground
+const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
+const groundBody = world.createRigidBody(groundDesc);
+const groundCollider = RAPIER.ColliderDesc.cuboid(50, 0.1, 50);
+world.createCollider(groundCollider, groundBody);
+
+socket.on("player-assigned", (player) => {
+  myPlayer = player;
+  myCube = myPlayer === "player1" ? greenCube : redCube;   // cube vert si j1 sinon cube rouge
+  myBody = playerBodies[myPlayer];
+});
+
+greenCube.position.set(0, 0.44, 0)
+redCube.position.set(1, 0.44, 0)
+
+socket.on("update-positions", (positions) => {
+  const otherPlayer = myPlayer === 'player1' ? 'player2' : 'player1';
+
+  if (positions.Player1Position && playerBodies.player1 && myPlayer !== 'player1') {
+    playerBodies.player1.setTranslation(positions.Player1Position, true);
+  }
+  if (positions.Player2Position && playerBodies.player2 && myPlayer !== 'player2') {
+    playerBodies.player2.setTranslation(positions.Player2Position, true);
+  }
+
+  // sync visual positions
+  greenCube.position.set(
+    playerBodies.player1.translation().x,
+    playerBodies.player1.translation().y,
+    playerBodies.player1.translation().z
+  );
+
+  redCube.position.set(
+    playerBodies.player2.translation().x,
+    playerBodies.player2.translation().y,
+    playerBodies.player2.translation().z
+  );
+});
+
+
+function sendMyPosition() {
+  if (!myPlayer || !myBody) return;
+  const pos = myBody.translation();
+  socket.emit("move-cube", {
+    x: pos.x,
+    y: pos.y,
+    z: pos.z,
+  });
+}
 
 
 const keys = {
@@ -81,89 +180,38 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
-socket.on("position", (pos) => {
-  cube.position.set(pos.x, pos.y, pos.z);
-});
+let movement = { x: 0, y: 0, z: 0 };
+const speed = 2;
 
-
-socket.on("move-cube", (pos) => {
-  cube.position.set(pos.x, pos.y, pos.z);
-});
-
-const jumpStatus = {
-  isJumping: false,
-  startTime: 0,
-  duration: 650,
-  startY: 0,
-};
-
-function startJump() {
-  if (!jumpStatus.isJumping) {
-    jumpStatus.isJumping = true;
-    jumpStatus.startTime = performance.now();
-    jumpStatus.startY = cube.position.y;
-  }
-}
-
-function updateJump(currentTime) {
-  if (!jumpStatus.isJumping) return;
-
-  const elapsed = currentTime - jumpStatus.startTime;
-  const t = elapsed / jumpStatus.duration;
-
-  if (t >= 1) {
-    cube.position.y = jumpStatus.startY;
-    jumpStatus.isJumping = false;
-    return;
-  }
-
-  // x va de -1 à 1
-  const x = 2 * t - 1;
-  const y = -x * x + 1;
-
-  cube.position.y = jumpStatus.startY + y;
-}
-
-function animate(currentTime) {
+function animate() {
   requestAnimationFrame(animate);
 
-  if (keys.KeyW) {
-    cube.position.z -= 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  if (keys.KeyS) {
-    cube.position.z += 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  if (keys.KeyA) {
-    cube.position.x -= 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  if (keys.KeyD) {
-    cube.position.x += 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
+  const movement = { x: 0, y: 0, z: 0 };
+  if (keys.KeyW) movement.z -= speed;
+  if (keys.KeyS) movement.z += speed;
+  if (keys.KeyA) movement.x -= speed;
+  if (keys.KeyD) movement.x += speed;
+
+  if (myBody) myBody.setLinvel(movement, true);
+
   if (keys.Space) {
-    startJump();
+    const vel = myBody.linvel();
+    if (Math.abs(vel.y) < 0.01) {
+      myBody.applyImpulse({ x: 0, y: 5, z: 0 }, true);
+    }
   }
 
-  // Met à jour le saut en fonction du temps
-  updateJump(currentTime);
+  world.step();
 
-  // Emit à chaque frame (optimisable si besoin)
-  socket.emit("move-cube", {
-    x: cube.position.x,
-    y: cube.position.y,
-    z: cube.position.z,
-  });
-  if (keys.ShiftLeft) {
-    cube.position.y -= 0.1;
-    socket.emit("move-cube", { x: cube.position.x, y: cube.position.y, z: cube.position.z });
-  }
-  console.log(cube.position.y);
+  // update mesh positions
+  greenCube.position.copy(playerBodies.player1.translation());
+  redCube.position.copy(playerBodies.player2.translation());
+
+  sendMyPosition();
 
   renderer.render(scene, camera);
 }
+
 
 animate();
 0
@@ -198,7 +246,6 @@ import {createServer} from 'http';
 
 const app = express();
 const server = createServer(app);
-// const io = new Server(server)
 
 const io = new Server(server, {
     cors: {
@@ -211,27 +258,50 @@ const io = new Server(server, {
 
 app.use(express.static("public"));
 
-let cube1Position = { x: 0, y: 0.44, z: 0 };
+let players = {}; // socket.id -> player number
+let cubePositions = {
+    Player1Position: { x: 0, y: 0.44, z: 0 },
+    Player2Position: { x: 2, y: 0.44, z: 0 },
+};
 
 io.on('connection', (socket) => {
-    console.log("User connected", socket.id);
-    
 
-    socket.emit("position", cube1Position);
+    const connectedCount = Object.keys(players).length;
+    if (connectedCount > 2) {                                             //limite le nombre de joueurs à 2
+        console.log("Server full, disconnecting user", socket.id);
+        socket.emit("error", "Game is full"); // envoie un message d'erreur au client
+        socket.disconnect(true);
+    }
+    const playerNumber = connectedCount === 0 ? 'player1' : 'player2';  // si personne n'est co alors : playerNumber = player1 sinon player2
+    players[socket.id] = playerNumber; // associe le socket.id au numéro du joueur
+
+    console.log(`Player ${playerNumber} connected:`);
+     
+    socket.emit("player-assigned", playerNumber);
+    io.emit("update-positions", cubePositions);  // donne la position initiale des cubes aux clients connectés
 
 
     socket.on("move-cube", (position) => {
-        cube1Position = position; // Mise à jour de la position du cube
-        io.emit("move-cube", cube1Position); // Envoie la nouvelle position à tous les clients
+        const player = players[socket.id]; // Met à jour la position du cube du joueur
+        if (!player) return;
+
+        const key = player === "player1" ? "Player1Position" : "Player2Position";
+        cubePositions[key] = position;
+        io.emit("update-positions", cubePositions); // broadcast new positions
     });
 
-    socket.on('disconnect', () => {
-        console.log("User disconnected", socket.id);
-    });
+
+    socket.on("disconnect", () => {
+        const player = players[socket.id];
+        delete players[socket.id];
+        console.log(`Player ${player} disconnected:`, socket.id);
+      });
 });
 
-server.listen(999, () => {
-    console.log("Server running on http://127.0.0.1:999");
+
+server.listen(3000, () => {
+    console.log("Server running on http://localhost:3000/");
+
 });
 
 0

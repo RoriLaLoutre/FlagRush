@@ -18,8 +18,8 @@ app.use(express.static("public"));
 
 let players = {}; // socket.id -> player number
 let cubePositions = {
-    Player1Position: { x: 0, y: 0.44, z: 0 },
-    Player2Position: { x: 2, y: 0.44, z: 0 },
+    Player1Position: { x: 0, y: 1, z: 0 },
+    Player2Position: { x: 2, y: 1, z: 0 },
 };
 
 io.on('connection', (socket) => {
@@ -57,8 +57,8 @@ io.on('connection', (socket) => {
 });
 
 
-server.listen(8080, () => {
-    console.log("Server running on http://51.210.103.122:8080/");
+server.listen(3000, () => {
+    console.log("Server running on http://localhost:3000/");
 
 });
 

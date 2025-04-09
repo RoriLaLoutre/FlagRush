@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/RoriLaLoutre/FlagRush#readme",
   "dependencies": {
+    "@dimforge/rapier3d": "^0.15.0",
     "express": "^5.1.0",
     "socket.io": "^4.8.1",
     "three": "^0.175.0"
