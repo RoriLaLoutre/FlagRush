@@ -1,11 +1,19 @@
 import * as THREE from "https://esm.sh/three@0.160";
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import { speed , taille_map , local , server, pesanteur} from "./constant.js";
+import { updateCamera , myCamera } from "./camera/camera.js"
+
+
 const socket = io(local); // a changer en server pour héberger le jeu
+
+
 let myPlayer = null;
 let myCube = null;
 let myBody = null;
 let isJumping;
+
+
+
 
 let world;
 await RAPIER.init();
@@ -16,15 +24,6 @@ world = new RAPIER.World(gravity);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); // bleu ciel
-
-// Création de la caméra
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,  
-  1000
-);
-camera.position.set(0, 2, 5); // Légèrement en hauteur pour voir les cubes et le sol
 
 // Création du moteur de rendu
 const renderer = new THREE.WebGLRenderer();
@@ -38,12 +37,12 @@ const playerBodies = {   // ici que seront les corps physiques des joueurs
 };
 
 // player1
-const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 1, 0);
+const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 5, 0);
 playerBodies.player1 = world.createRigidBody(player1Desc);
 world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player1);
 
 // player2
-const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 1, 0);  
+const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 5, 0);  
 playerBodies.player2 = world.createRigidBody(player2Desc);  
 world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
 
@@ -170,7 +169,7 @@ function animate() {
     const vel = myBody.linvel();
     if (Math.abs(vel.y) < 0.01) {
       isJumping = true;
-      myBody.applyImpulse({ x: 0, y: 2, z: 0 }, true);
+      myBody.applyImpulse({ x: 0, y: 5, z: 0 }, true);
     }
   }
 
@@ -181,8 +180,8 @@ function animate() {
   redCube.position.copy(playerBodies.player2.translation());
 
   sendMyPosition();
-
-  renderer.render(scene, camera);
+  updateCamera(myCube);
+  renderer.render(scene, myCamera);
 }
 
 
