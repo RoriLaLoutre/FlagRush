@@ -2,11 +2,18 @@ import * as THREE from "https://esm.sh/three@0.160";
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import { createMurs } from './map/map.js';
 import { speed , taille_map , local , server, pesanteur} from "./constant.js";
+import { updateCamera , myCamera } from "./camera/camera.js"
+import { light , ambient } from "./lightings/light.js";
+
+
 const socket = io(local); // a changer en server pour héberger le jeu
+
+
 let myPlayer = null;
 let myCube = null;
 let myBody = null;
 let isJumping;
+
 
 let world;
 await RAPIER.init();
@@ -14,22 +21,14 @@ const gravity = { x: 0, y: pesanteur, z: 0 };
 world = new RAPIER.World(gravity);
 
 
-
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb); // bleu ciel
-
-// Création de la caméra
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,  
-  1000
-);
-camera.position.set(0, 2, 5); // Légèrement en hauteur pour voir les cubes et le sol
 
 // Création du moteur de rendu
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 
@@ -39,12 +38,12 @@ const playerBodies = {   // ici que seront les corps physiques des joueurs
 };
 
 // player1
-const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 1, 0);
+const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 5, 0);
 playerBodies.player1 = world.createRigidBody(player1Desc);
 world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player1);
 
 // player2
-const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 1, 0);  
+const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 5, 0);  
 playerBodies.player2 = world.createRigidBody(player2Desc);  
 world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
 
@@ -53,33 +52,43 @@ world.step();
 // Cube vert et rouge
 const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);  // diemension des cubes joueurs
 
-const materialGreen = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const materialRed = new THREE.MeshBasicMaterial({ color: 0xff0000  });
+const materialGreen = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+const materialRed = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 
 const greenCube = new THREE.Mesh(geometry, materialGreen);
 const redCube = new THREE.Mesh(geometry, materialRed);
 
-scene.add(greenCube);
-scene.add(redCube);
 
 // visual ground
 const groundGeometry = new THREE.BoxGeometry(taille_map*2, 0.2, taille_map*2); 
-const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
+const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
 const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
 
 groundMesh.position.set(0, -0.1, 0); 
-
-scene.add(groundMesh);
-
 // Creations des murs
 createMurs(scene, world);
-
 
 // physical ground
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
 const groundBody = world.createRigidBody(groundDesc);
 const groundCollider = RAPIER.ColliderDesc.cuboid(taille_map, 0.1, taille_map);
 world.createCollider(groundCollider, groundBody);
+
+
+scene.add(greenCube);
+scene.add(redCube);
+scene.add(groundMesh);
+scene.add(light);
+scene.add(ambient);
+scene.add(light.target);
+
+//shadow casting
+
+greenCube.castShadow = true;
+redCube.castShadow = true;
+
+groundMesh.receiveShadow = true;
+
 
 socket.on("player-assigned", (player) => {
   myPlayer = player;
@@ -175,7 +184,7 @@ function animate() {
     const vel = myBody.linvel();
     if (Math.abs(vel.y) < 0.01) {
       isJumping = true;
-      myBody.applyImpulse({ x: 0, y: 2, z: 0 }, true);
+      myBody.applyImpulse({ x: 0, y: 5, z: 0 }, true);
     }
   }
 
@@ -186,8 +195,8 @@ function animate() {
   redCube.position.copy(playerBodies.player2.translation());
 
   sendMyPosition();
-
-  renderer.render(scene, camera2d);
+  updateCamera(myCube);
+  renderer.render(scene, myCamera);
 }
 
 
