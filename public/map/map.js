@@ -36,6 +36,8 @@ export function createMurs(scene, world) {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(mur.x, mur.y, mur.z);
       scene.add(mesh);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
   
       const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(mur.x, mur.y, mur.z);
       const body = world.createRigidBody(bodyDesc);
