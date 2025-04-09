@@ -42,13 +42,13 @@ const playerBodies = {   // ici que seront les corps physiques des joueurs
 const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 5, 0);
 playerBodies.player1 = world.createRigidBody(player1Desc);
 playerBodies.player1.lockRotations(true);
-world.createCollider(RAPIER.ColliderDesc.cuboid(0.25 + 0.025, 0.5 + 0.025, 0.25 + 0.025), playerBodies.player1);
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player1);
 
 // player2
 const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 5, 0);  
 playerBodies.player2 = world.createRigidBody(player2Desc);  
 playerBodies.player2.lockRotations(true);
-world.createCollider(RAPIER.ColliderDesc.cuboid(0.25 + 0.025, 0.5 + 0.025, 0.25 + 0.025), playerBodies.player2)
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
 
 
 // Cube vert et rouge
@@ -83,8 +83,6 @@ const groundCollider = RAPIER.ColliderDesc.cuboid(taille_map, 0.1, taille_map);
 world.createCollider(groundCollider, groundBody);
 
 
-scene.add(greenCube);
-scene.add(redCube);
 scene.add(groundMesh);
 scene.add(light);
 scene.add(ambient);
@@ -92,8 +90,8 @@ scene.add(light.target);
 
 //shadow casting
 
-greenCube.castShadow = true;
-redCube.castShadow = true;
+player1Cube.castShadow = true;
+player2Cube.castShadow = true;
 
 groundMesh.receiveShadow = true;
 
