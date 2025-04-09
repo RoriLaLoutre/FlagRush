@@ -12,6 +12,7 @@ const socket = io(local); // a changer en server pour héberger le jeu
 let myPlayer = null;
 let myCube = null;
 let myBody = null;
+let  physicsObjects = [];
 let isJumping;
 
 
@@ -40,14 +41,15 @@ const playerBodies = {   // ici que seront les corps physiques des joueurs
 // player1
 const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 5, 0);
 playerBodies.player1 = world.createRigidBody(player1Desc);
-world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player1);
+playerBodies.player1.lockRotations(true);
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25 + 0.025, 0.5 + 0.025, 0.25 + 0.025), playerBodies.player1);
 
 // player2
 const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 5, 0);  
 playerBodies.player2 = world.createRigidBody(player2Desc);  
-world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
+playerBodies.player2.lockRotations(true);
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25 + 0.025, 0.5 + 0.025, 0.25 + 0.025), playerBodies.player2)
 
-world.step();
 
 // Cube vert et rouge
 const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);  // diemension des cubes joueurs
@@ -55,8 +57,14 @@ const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);  // diemension des cubes j
 const materialGreen = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 const materialRed = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 
-const greenCube = new THREE.Mesh(geometry, materialGreen);
-const redCube = new THREE.Mesh(geometry, materialRed);
+const player1Cube = new THREE.Mesh(geometry, materialGreen);
+const player2Cube = new THREE.Mesh(geometry, materialRed);
+
+scene.add(player1Cube);
+scene.add(player2Cube);
+
+physicsObjects.push({ mesh: player1Cube, body: playerBodies.player1 });
+physicsObjects.push({ mesh: player2Cube,body: playerBodies.player2 });
 
 
 // visual ground
@@ -92,12 +100,12 @@ groundMesh.receiveShadow = true;
 
 socket.on("player-assigned", (player) => {
   myPlayer = player;
-  myCube = myPlayer === "player1" ? greenCube : redCube;   // cube vert si j1 sinon cube rouge
+  myCube = myPlayer === "player1" ? player1Cube : player2Cube;   // cube vert si j1 sinon cube rouge
   myBody = playerBodies[myPlayer];
 });
 
-greenCube.position.set(0, 0.44, 0)
-redCube.position.set(1, 0.44, 0)
+player1Cube.position.set(0, 0.44, 0)
+player2Cube.position.set(1, 0.44, 0)
 
 socket.on("update-positions", (positions) => {
   const otherPlayer = myPlayer === 'player1' ? 'player2' : 'player1';
@@ -110,13 +118,13 @@ socket.on("update-positions", (positions) => {
   }
 
   // sync visual positions
-  greenCube.position.set(
+  player1Cube.position.set(
     playerBodies.player1.translation().x,
     playerBodies.player1.translation().y,
     playerBodies.player1.translation().z
   );
 
-  redCube.position.set(
+  player2Cube.position.set(
     playerBodies.player2.translation().x,
     playerBodies.player2.translation().y,
     playerBodies.player2.translation().z
@@ -166,6 +174,17 @@ function updateJump(){
   }
 }
 
+function syncPhysicsToMeshes() {
+  for (const { mesh, body } of physicsObjects) {
+    const pos = body.translation();
+    const rot = body.rotation();
+
+    mesh.position.set(pos.x, pos.y, pos.z);
+    mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+  }
+}
+
+
 function animate() {
   requestAnimationFrame(animate);
   updateJump();
@@ -188,13 +207,16 @@ function animate() {
     }
   }
 
-  world.step();
+  
 
   // update mesh positions
-  greenCube.position.copy(playerBodies.player1.translation());
-  redCube.position.copy(playerBodies.player2.translation());
+  player1Cube.position.copy(playerBodies.player1.translation());
+  player2Cube.position.copy(playerBodies.player2.translation());
 
   sendMyPosition();
+
+  world.step();
+  syncPhysicsToMeshes();
   updateCamera(myCube);
   renderer.render(scene, myCamera);
 }
