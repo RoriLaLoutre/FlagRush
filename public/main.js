@@ -118,7 +118,6 @@ socket.on("player-assigned", (player) => {
 
 // maj des positions
 socket.on("update-positions", (positions) => {
-  const otherPlayer = myPlayer === 'player1' ? 'player2' : 'player1';
 
   if (positions.Player1Position && playerBodies.player1 && myPlayer !== 'player1') {
     playerBodies.player1.setTranslation(positions.Player1Position, true);
@@ -177,16 +176,14 @@ function checkFlagZone() {
   if (pos.y < -2) {
     hasFlag = false;
     console.log(" Le joueur a perdu le drapeau !");
-
+      // drapeau reviens au milieu A Faire  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     return;
   }
 
   // Si le joueur n'a pas encore le drapeau, vérifier s'il est dans la zone pour le prendre
   if (!hasFlag) {
-    const inX = pos.x >= -1.5 && pos.x <= 1.5;
-    const inZ = pos.z >= -1.5 && pos.z <= 1.5;
-
-    if (inX && inZ) {
+      // ne marche que si le drapeau est dedans donc non
+    if ((pos.z >= -1.5 && pos.z <= 1.5) && (pos.x >= -1.5 && pos.x <= 1.5)) {
       hasFlag = true;
       console.log("🎌 Le joueur a capturé le drapeau !");
     }

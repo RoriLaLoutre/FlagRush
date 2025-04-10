@@ -12,12 +12,14 @@ const io = new Server(server, {
       methods: ["GET", "POST"]
     }
   });
-  
-  app.use(express.static("public"));
 
 app.use(express.static("public"));
 
-let players = {}; // socket.id -> player number
+let players = {
+    player1 : null,
+    player2 : null
+};
+
 let cubePositions = {
     Player1Position: { x: 0, y: 100, z: 0 },
     Player2Position: { x: 0, y: 100, z: 0 },
@@ -25,20 +27,24 @@ let cubePositions = {
 
 io.on('connection', (socket) => {
 
-    const connectedCount = Object.keys(players).length;
-    if (connectedCount > 2) {                                             //limite le nombre de joueurs à 2
+    let assignedPlayer = null
+
+    if (!players.player1) {           //si pas ou plus de joueur 1
+        players.player1 = socket.id;
+        assignedPlayer = 'player1';
+    } else if (!players.player2) { // meme chose pour j2
+        players.player2 = socket.id;
+        assignedPlayer = 'player2';
+    } else {
         console.log("Server full, disconnecting user", socket.id);
-        socket.emit("error", "Game is full"); // envoie un message d'erreur au client
+        socket.emit("error", "Game is full");
         socket.disconnect(true);
+        return;
     }
-    const playerNumber = connectedCount === 0 ? 'player1' : 'player2';  // si personne n'est co alors : playerNumber = player1 sinon player2
-    players[socket.id] = playerNumber; // associe le socket.id au numéro du joueur
 
-    console.log(`Player ${playerNumber} connected:`);
-     
-    socket.emit("player-assigned", playerNumber);
-    io.emit("update-positions", cubePositions);  // donne la position initiale des cubes aux clients connectés
-
+    console.log(`Player ${assignedPlayer} connected:`, socket.id);
+    socket.emit("player-assigned", assignedPlayer);
+    io.emit("update-positions", cubePositions);
 
     socket.on("move-cube", (position) => {
         const player = players[socket.id]; // Met à jour la position du cube du joueur
@@ -51,9 +57,13 @@ io.on('connection', (socket) => {
 
 
     socket.on("disconnect", () => {
-        const player = players[socket.id];
-        delete players[socket.id];
-        console.log(`Player ${player} disconnected:`, socket.id);
+        if (players.player1 === socket.id) {
+          players.player1 = null;
+          console.log("Player1 disconnected:", socket.id);
+        } else if (players.player2 === socket.id) {
+          players.player2 = null;
+          console.log("Player2 disconnected:", socket.id);
+        }
       });
 });
 
