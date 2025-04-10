@@ -206,9 +206,12 @@ function updateJump(currentTime) {
 const controls = new PointerLockControls(myCamera, document.body);
 scene.add(controls.getObject());
 
-document.addEventListener('click', () => {
+document.addEventListener('keydown', handleLock);
+document.addEventListener('click', handleLock);
+
+function handleLock() {
   controls.lock();
-});
+}
 
 
 
