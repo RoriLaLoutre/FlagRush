@@ -8,6 +8,7 @@ import { speed , taille_map , local , server, pesanteur , hauteurMur} from "./co
 
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
+import { startRaycast } from "./raycast/raycast.js";
 
 const socket = io(local); // a changer en server pour héberger le jeu
 
@@ -17,7 +18,7 @@ let myCube = null;
 let myBody = null;
 
 let  physicsObjects = [];
-let isJumping;
+let isJumping = false;
 
 
 let jumpStatus = {
@@ -30,7 +31,7 @@ let jumpStatus = {
 
 let world;
 await RAPIER.init();
-const gravity = { x: 0, y: pesanteur, z: 0 };
+const gravity = { x: 0, y: pesanteur*2, z: 0 };
 world = new RAPIER.World(gravity);
 
 const scene = new THREE.Scene();
@@ -174,7 +175,6 @@ document.addEventListener("keyup", (e) => {
   if (e.code in keys) keys[e.code] = false;
 });
 
-
 // Gestion du saut fluide
 function startJump() {
   if (!jumpStatus.isJumping && myBody) {
@@ -232,6 +232,7 @@ function syncPhysicsToMeshes() {
   }
 }
 
+startRaycast(world,myCamera);
 
 function animate(currentTime) {
   requestAnimationFrame(animate);
@@ -241,6 +242,7 @@ function animate(currentTime) {
     const frontVector = new THREE.Vector3();
     const sideVector = new THREE.Vector3();
   
+
     frontVector.set(0, 0, Number(keys.KeyW) - Number(keys.KeyS));
     sideVector.set(Number(keys.KeyA) - Number(keys.KeyD), 0, 0);
   
