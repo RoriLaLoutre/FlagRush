@@ -1,10 +1,10 @@
-import * as THREE from "https://esm.sh/three@0.160";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
+import { PointerLockControls } from "./controls/controls.js"
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import { createMurs } from './map/map.js';
-import { speed , taille_map , local , server, pesanteur} from "./constant.js";
+import { speed , taille_map , local , server, pesanteur , hauteurMur} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
-
 
 const socket = io(local); // a changer en server pour héberger le jeu
 
@@ -74,12 +74,12 @@ const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
 
 groundMesh.position.set(0, -0.1, 0); 
 // Creations des murs
-createMurs(scene, world);
+createMurs(scene, world , hauteurMur);
 
 // physical ground
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
 const groundBody = world.createRigidBody(groundDesc);
-const groundCollider = RAPIER.ColliderDesc.cuboid(taille_map, 0.1, taille_map);
+const groundCollider = RAPIER.ColliderDesc.cuboid(taille_map, 0.3, taille_map);
 world.createCollider(groundCollider, groundBody);
 
 
@@ -102,8 +102,6 @@ socket.on("player-assigned", (player) => {
   myBody = playerBodies[myPlayer];
 });
 
-player1Cube.position.set(0, 0.44, 0)
-player2Cube.position.set(1, 0.44, 0)
 
 socket.on("update-positions", (positions) => {
   const otherPlayer = myPlayer === 'player1' ? 'player2' : 'player1';
@@ -162,15 +160,16 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
+// to lock camera on click
 
-function updateJump(){
-  if (myBody) {
-    const vel = myBody.linvel();
-    if (Math.abs(vel.y) < 0.01) {
-      isJumping = false;
-    }
-  }
-}
+const controls = new PointerLockControls(myCamera, document.body);
+scene.add(controls.getObject());
+
+document.addEventListener('click', () => {
+  controls.lock();
+});
+
+
 
 function syncPhysicsToMeshes() {
   for (const { mesh, body } of physicsObjects) {
@@ -185,24 +184,28 @@ function syncPhysicsToMeshes() {
 
 function animate() {
   requestAnimationFrame(animate);
-  updateJump();
 
-  const movement = { x: 0, y: 0, z: 0 };
-  if (keys.KeyW) movement.z -= speed;
-  if (keys.KeyS) movement.z += speed;
-  if (keys.KeyA) movement.x -= speed;
-  if (keys.KeyD) movement.x += speed;
-
-  if (myBody) myBody.setLinvel(movement, true);
-
+  if (myBody && controls.isLocked) {
+    const direction = new THREE.Vector3();
+    const frontVector = new THREE.Vector3();
+    const sideVector = new THREE.Vector3();
   
-
-  if (keys.Space && isJumping === false) {
-    const vel = myBody.linvel();
-    if (Math.abs(vel.y) < 0.01) {
-      isJumping = true;
-      myBody.applyImpulse({ x: 0, y: 5, z: 0 }, true);
-    }
+    frontVector.set(0, 0, Number(keys.KeyW) - Number(keys.KeyS));
+    sideVector.set(Number(keys.KeyA) - Number(keys.KeyD), 0, 0);
+  
+    direction.subVectors(frontVector, sideVector);
+    direction.normalize().multiplyScalar(speed);
+  
+    const cameraDirection = controls.getDirection(new THREE.Vector3());
+    const right = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0));
+  
+    const moveDir = new THREE.Vector3();
+    moveDir.addScaledVector(cameraDirection, direction.z);
+    moveDir.addScaledVector(right, direction.x);
+  
+    moveDir.y = myBody.linvel().y; // garde la vitesse verticale pour le saut
+  
+    myBody.setLinvel(moveDir, true);
   }
 
   
@@ -215,7 +218,7 @@ function animate() {
 
   world.step();
   syncPhysicsToMeshes();
-  updateCamera(myCube);
+  updateCamera(myCube , controls);
   renderer.render(scene, myCamera);
 }
 

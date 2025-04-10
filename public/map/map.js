@@ -1,8 +1,8 @@
-import * as THREE from "https://esm.sh/three@0.160";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 
-export function createMurs(scene, world) {
-    const hauteur = 5; 
+export function createMurs(scene, world , hauteur) {
+
     const murs = [
       // murs bas 
       { x: -1, y: 0 , z: 4, w:0.5, d: 4},
