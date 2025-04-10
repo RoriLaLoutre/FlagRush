@@ -84,14 +84,15 @@ export function createMurs(scene, world , hauteur) {
     });
   }
 
-  export function createFlag(scene, world) {
-    // Création du drapeau
+export let flagMesh = null;
+
+export function createFlag(scene, world) {
+  // Création du drapeau
     const flagGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
     const flagMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
-    const flagMesh = new THREE.Mesh(flagGeometry, flagMaterial);
-    flagMesh.position.set(0, 0.5, 0); // Position du drapeau
+    flagMesh = new THREE.Mesh(flagGeometry, flagMaterial);
+    flagMesh.position.set(0, 0.5, 0); // Position initiale du drapeau
     scene.add(flagMesh);
-  
     // Création du sol rouge
     const groundGeometry = new THREE.PlaneGeometry(3, 3); // Taille du sol
     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
