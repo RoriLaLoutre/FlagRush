@@ -1,8 +1,8 @@
-import * as THREE from "https://esm.sh/three@0.160";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 
-export function createMurs(scene, world) {
-    const hauteur = 5; 
+export function createMurs(scene, world , hauteur) {
+
     const murs = [
       // murs bas 
       { x: -1, y: 0 , z: 4, w:0.5, d: 4},
@@ -36,6 +36,8 @@ export function createMurs(scene, world) {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(mur.x, mur.y, mur.z);
       scene.add(mesh);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
   
       const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(mur.x, mur.y, mur.z);
       const body = world.createRigidBody(bodyDesc);
