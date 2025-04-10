@@ -1,6 +1,6 @@
 import * as THREE from "https://esm.sh/three@0.160";
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
-import { createMurs } from './map/map.js';
+import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2} from './map/map.js';
 import { speed , taille_map , local , server, pesanteur} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
@@ -67,6 +67,10 @@ const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
 groundMesh.position.set(0, -0.1, 0); 
 // Creations des murs
 createMurs(scene, world);
+
+createFlag(scene, world); // creation du drapeau
+zoneSpawn1(scene, world); // creation de la zone de spawn
+zoneSpawn2(scene, world); // creation de la zone de spawn 2
 
 // physical ground
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
