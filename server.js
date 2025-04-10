@@ -47,13 +47,12 @@ io.on('connection', (socket) => {
     io.emit("update-positions", cubePositions);
 
     socket.on("move-cube", (position) => {
-        const player = players[socket.id]; // Met à jour la position du cube du joueur
-        if (!player) return;
-
-        const key = player === "player1" ? "Player1Position" : "Player2Position";
+        if (!assignedPlayer) return;
+    
+        const key = assignedPlayer === "player1" ? "Player1Position" : "Player2Position";
         cubePositions[key] = position;
-        io.emit("update-positions", cubePositions); // broadcast new positions
-    });
+        io.emit("update-positions", cubePositions);
+      });
 
 
     socket.on("disconnect", () => {

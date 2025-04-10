@@ -259,59 +259,62 @@ function syncPhysicsToMeshes() {
 startRaycast(world,myCamera);
 
 function animate(currentTime) {
-  requestAnimationFrame(animate);
 
-  checkFlagZone();
-  
+  setTimeout( () =>{
+    requestAnimationFrame(animate);
 
-
-  if (myBody && controls.isLocked) {
-    const direction = new THREE.Vector3();
-    const frontVector = new THREE.Vector3();
-    const sideVector = new THREE.Vector3();
+    checkFlagZone();
   
 
-    frontVector.set(0, 0, Number(keys.KeyW) - Number(keys.KeyS));
-    sideVector.set(Number(keys.KeyA) - Number(keys.KeyD), 0, 0);
+
+    if (myBody && controls.isLocked) {
+      const direction = new THREE.Vector3();
+      const frontVector = new THREE.Vector3();
+      const sideVector = new THREE.Vector3();
   
-    direction.subVectors(frontVector, sideVector);
-    direction.normalize().multiplyScalar(speed);
+
+      frontVector.set(0, 0, Number(keys.KeyW) - Number(keys.KeyS));
+      sideVector.set(Number(keys.KeyA) - Number(keys.KeyD), 0, 0);
   
-    const cameraDirection = controls.getDirection(new THREE.Vector3());
-    const right = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0));
+      direction.subVectors(frontVector, sideVector);
+      direction.normalize().multiplyScalar(speed);
   
-    const moveDir = new THREE.Vector3();
-    moveDir.addScaledVector(cameraDirection, direction.z);
-    moveDir.addScaledVector(right, direction.x);
+      const cameraDirection = controls.getDirection(new THREE.Vector3());
+      const right = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0));
   
-    moveDir.y = myBody.linvel().y; // garde la vitesse verticale pour le saut
+      const moveDir = new THREE.Vector3();
+      moveDir.addScaledVector(cameraDirection, direction.z);
+      moveDir.addScaledVector(right, direction.x);
   
-    myBody.setLinvel(moveDir, true);
-    if (keys.Space) startJump();
-  }
+      moveDir.y = myBody.linvel().y; // garde la vitesse verticale pour le saut
+  
+      myBody.setLinvel(moveDir, true);
+      if (keys.Space) startJump();
+    }
 
   
 
   // update mesh positions
-  player1Cube.position.copy(playerBodies.player1.translation());
-  player2Cube.position.copy(playerBodies.player2.translation());
+    player1Cube.position.copy(playerBodies.player1.translation());
+    player2Cube.position.copy(playerBodies.player2.translation());
 
-  updateJump(currentTime);
-  sendMyPosition();
+    updateJump(currentTime);
+    sendMyPosition();
 
-  world.step();
-  syncPhysicsToMeshes();
-  updateCamera(myCube , controls);
-  if (hasFlag && myCube && flagMesh) {
-    flagMesh.position.set(
-      myCube.position.x,
-      myCube.position.y + 1.2,
-      myCube.position.z
-    );
-  } else if (flagMesh && !hasFlag) {
+    world.step();
+    syncPhysicsToMeshes();
+    updateCamera(myCube , controls);
+    if (hasFlag && myCube && flagMesh) {
+      flagMesh.position.set(
+        myCube.position.x,
+        myCube.position.y + 1.2,
+        myCube.position.z
+      );
+    } else if (flagMesh && !hasFlag) {
     // Remettre le drapeau à sa position d’origine si perdu
-    flagMesh.position.set(0, 0.5, 0); // position initiale au centre
-  }
+      flagMesh.position.set(0, 0.5, 0); // position initiale au centre
+    }
+  } , 1000 / 60)
   renderer.render(scene, myCamera);
 }
 
