@@ -1,7 +1,8 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
 import { PointerLockControls } from "./controls/controls.js"
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
-import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2} from './map/map.js';
+import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2 ,flagMesh } from './map/map.js';
+
 import { speed , taille_map , local , server, pesanteur , hauteurMur} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
@@ -304,6 +305,16 @@ function animate(currentTime) {
   world.step();
   syncPhysicsToMeshes();
   updateCamera(myCube , controls);
+  if (hasFlag && myCube && flagMesh) {
+    flagMesh.position.set(
+      myCube.position.x,
+      myCube.position.y + 1.2,
+      myCube.position.z
+    );
+  } else if (flagMesh && !hasFlag) {
+    // Remettre le drapeau à sa position d’origine si perdu
+    flagMesh.position.set(0, 0.5, 0); // position initiale au centre
+  }
   renderer.render(scene, myCamera);
 }
 
