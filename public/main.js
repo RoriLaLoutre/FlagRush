@@ -61,6 +61,9 @@ playerBodies.player2.lockRotations(true);
 world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
 
 
+
+
+
 // Cubes joueurs
 const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);
 
@@ -167,6 +170,34 @@ const keys = {
   ShiftLeft: false,
 };
 
+// Drapeau : 
+let hasFlag = false;
+function checkFlagZone() {
+  if (!myBody) return;
+
+  const pos = myBody.translation();
+
+  // Si le joueur tombe dans le vide, il perd le drapeau
+  if (pos.y < -2) {
+    hasFlag = false;
+    console.log(" Le joueur a perdu le drapeau !");
+
+    return;
+  }
+
+  // Si le joueur n'a pas encore le drapeau, vérifier s'il est dans la zone pour le prendre
+  if (!hasFlag) {
+    const inX = pos.x >= -1.5 && pos.x <= 1.5;
+    const inZ = pos.z >= -1.5 && pos.z <= 1.5;
+
+    if (inX && inZ) {
+      hasFlag = true;
+      console.log("🎌 Le joueur a capturé le drapeau !");
+    }
+  }
+}
+
+
 document.addEventListener("keydown", (e) => {
   if (e.code in keys) keys[e.code] = true;
 });
@@ -236,6 +267,10 @@ startRaycast(world,myCamera);
 
 function animate(currentTime) {
   requestAnimationFrame(animate);
+
+  checkFlagZone();
+  
+
 
   if (myBody && controls.isLocked) {
     const direction = new THREE.Vector3();
