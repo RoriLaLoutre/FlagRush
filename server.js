@@ -19,8 +19,8 @@ app.use(express.static("public"));
 
 let players = {}; // socket.id -> player number
 let cubePositions = {
-    Player1Position: { x: 0, y: 1, z: 0 },
-    Player2Position: { x: 2, y: 1, z: 0 },
+    Player1Position: { x: 0, y: 100, z: 0 },
+    Player2Position: { x: 0, y: 100, z: 0 },
 };
 
 io.on('connection', (socket) => {

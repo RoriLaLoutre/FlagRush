@@ -13,7 +13,6 @@ export function createMurs(scene, world , hauteur) {
 
       { x: 5.3, y: 0 , z: 7.25, w:3, d: 0.5},
       { x: 7, y: 0 , z: 6, w:0.5, d: 3},
-
       { x: -5, y: 0 , z: 4.5, w:0.5, d: 1},
       { x: -5.8, y: 0 , z: 4.21, w:2, d: 0.5},
 
@@ -31,7 +30,6 @@ export function createMurs(scene, world , hauteur) {
 
       { x: 9.8, y: 0, z: 11.21, w: 5, d: 0.5 },
       { x: -9.8, y: 0, z: 11.21, w: 5, d: 0.5 },
-
       { x: 9.8, y: 0, z: -11.21, w: 5, d: 0.5 },
       { x: -9.8, y: 0, z: -11.21, w: 5, d: 0.5 },
 
@@ -47,15 +45,6 @@ export function createMurs(scene, world , hauteur) {
       { x: 4.3, y: 0, z: 13, w: 0.5, d: 2 },
       { x: 11, y: 0, z: 4, w: 2, d: 3 },
       { x: 7.5, y: 0, z: -10, w: 0.5, d: 3 },
-
-
-
-
-
-
-
-
-
     ];
   
     murs.forEach(mur => {
@@ -86,7 +75,7 @@ export function createMurs(scene, world , hauteur) {
 
 export let flagMesh = null;
 
-export function createFlag(scene, world) {
+export function createFlag(scene) {
   // Création du drapeau
     const flagGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
     const flagMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
@@ -100,49 +89,23 @@ export function createFlag(scene, world) {
     groundMesh.rotation.x = - Math.PI / 2; // Incliner le sol pour qu'il soit horizontal
     groundMesh.position.set(0, 0.001, 0); // Position du sol
     scene.add(groundMesh);
-  
-    // Création de la zone de physique pour le sol
-    const groundBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
-    const groundBody = world.createRigidBody(groundBodyDesc);
-    const groundCollider = RAPIER.ColliderDesc.cuboid(5, 0.05, 5); // Taille du sol pour la physique
-    world.createCollider(groundCollider, groundBody);
-  
-    // Création du drapeau avec physique
-    const flagBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0.5, 0);
-    const flagBody = world.createRigidBody(flagBodyDesc);
-    const flagCollider = RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.05); // Taille du drapeau
-    world.createCollider(flagCollider, flagBody);
   }
    
-  export function zoneSpawn1(scene, world) {
-    const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5); // Taille de la zone de spawn    
-    const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-    const spawnMesh = new THREE.Mesh(spawnGeometry, spawnMaterial);    
-    spawnMesh.position.set(-12,75, 0.01, -12.75); // Position de la zone de spawn
-    spawnMesh.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
-    scene.add(spawnMesh);
-
-  
-    // Création de la zone de physique pour le spawn
-    const spawnBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0.05, 0);
-    const spawnBody = world.createRigidBody(spawnBodyDesc);
-    const spawnCollider = RAPIER.ColliderDesc.cuboid(0.25, 0.05, 0.25); // Taille de la zone de spawn pour la physique
-    world.createCollider(spawnCollider, spawnBody);
+  export function zoneSpawn1(scene) {
+    const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5);    
+    const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); //zone verte
+    const spawnMeshvert = new THREE.Mesh(spawnGeometry, spawnMaterial);    
+    spawnMeshvert.position.set(-12.75, 0.01, -12.75); // Position de la zone de spawn
+    spawnMeshvert.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
+    scene.add(spawnMeshvert);
   }
 
-  export function zoneSpawn2(scene, world) {
-    const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5); // Taille de la zone de spawn    
-    const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
-    const spawnMesh = new THREE.Mesh(spawnGeometry, spawnMaterial);    
-    spawnMesh.position.set(12.75, 0.01, 12.75); // Position de la zone de spawn
-    spawnMesh.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
-    scene.add(spawnMesh);
-
-  
-    // Création de la zone de physique pour le spawn
-    const spawnBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0.05, 0);
-    const spawnBody = world.createRigidBody(spawnBodyDesc);
-    const spawnCollider = RAPIER.ColliderDesc.cuboid(0.25, 0.05, 0.25); // Taille de la zone de spawn pour la physique
-    world.createCollider(spawnCollider, spawnBody);
+  export function zoneSpawn2(scene) {
+    const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5);  
+    const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff }); //zone bleue
+    const spawnMeshrouge = new THREE.Mesh(spawnGeometry, spawnMaterial);    
+    spawnMeshrouge.position.set(12.75, 0.01, 12.75); // Position de la zone de spawn
+    spawnMeshrouge.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
+    scene.add(spawnMeshrouge);
   }
   

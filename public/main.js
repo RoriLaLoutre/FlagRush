@@ -1,11 +1,9 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
 import { PointerLockControls } from "./controls/controls.js"
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
-
 import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2 ,flagMesh } from './map/map.js';
 
 import { speed , taille_map , local , server, pesanteur , hauteurMur} from "./constant.js";
-
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
 import { startRaycast } from "./raycast/raycast.js";
@@ -18,8 +16,6 @@ let myCube = null;
 let myBody = null;
 
 let  physicsObjects = [];
-let isJumping = false;
-
 
 let jumpStatus = {
   isJumping: false,
@@ -50,12 +46,12 @@ const playerBodies = {
   player2: null,
 };
 
-const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 5, 0);
+const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(-12.75, 5, -12.75);
 playerBodies.player1 = world.createRigidBody(player1Desc);
 playerBodies.player1.lockRotations(true);
 world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player1);
 
-const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(1, 5, 0);  
+const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(12.75, 5, 12.75);  
 playerBodies.player2 = world.createRigidBody(player2Desc);  
 playerBodies.player2.lockRotations(true);
 world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
@@ -68,10 +64,10 @@ world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.p
 const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);
 
 const materialGreen = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-const materialRed = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+const materialBlue = new THREE.MeshStandardMaterial({ color : 0x0000ff });
 
 const player1Cube = new THREE.Mesh(geometry, materialGreen);
-const player2Cube = new THREE.Mesh(geometry, materialRed);
+const player2Cube = new THREE.Mesh(geometry, materialBlue);
 
 scene.add(player1Cube);
 scene.add(player2Cube);
@@ -94,9 +90,9 @@ groundMesh.position.set(0, -0.1, 0);
 
 // Création des murs et zones
 createMurs(scene, world, hauteurMur);
-createFlag(scene, world);
-zoneSpawn1(scene, world);
-zoneSpawn2(scene, world);
+createFlag(scene);
+zoneSpawn1(scene);
+zoneSpawn2(scene);
 
 // Sol physique
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
@@ -120,7 +116,7 @@ socket.on("player-assigned", (player) => {
   myBody = playerBodies[myPlayer];
 });
 
-// MàJ des positions
+// maj des positions
 socket.on("update-positions", (positions) => {
   const otherPlayer = myPlayer === 'player1' ? 'player2' : 'player1';
 
@@ -240,7 +236,7 @@ function updateJump(currentTime) {
 }
 
 
-
+myCamera.lookAt(new THREE.Vector3(1, 0, 1));
 const controls = new PointerLockControls(myCamera, document.body);
 scene.add(controls.getObject());
 
