@@ -93,10 +93,6 @@ const groundBody = world.createRigidBody(groundDesc);
 const groundCollider = RAPIER.ColliderDesc.cuboid(taille_map, 0.3, taille_map);
 world.createCollider(groundCollider, groundBody);
 
-// Ajout à la scène
-scene.add(greenCube, redCube, groundMesh, light, ambient, light.target);
-
-
 scene.add(groundMesh);
 scene.add(light);
 scene.add(ambient);
@@ -227,7 +223,7 @@ function syncPhysicsToMeshes() {
 }
 
 
-function animate() {
+function animate(currentTime) {
   requestAnimationFrame(animate);
 
   if (myBody && controls.isLocked) {
