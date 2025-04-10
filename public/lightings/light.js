@@ -1,4 +1,5 @@
-import * as THREE from "https://esm.sh/three@0.160";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
+
 
 export const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5, 10, 5);
