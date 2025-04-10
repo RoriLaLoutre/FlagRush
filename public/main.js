@@ -4,6 +4,7 @@ import { createMurs } from './map/map.js';
 import { speed , taille_map , local , server, pesanteur} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
+import { startRaycast } from "./raycast/raycast.js";
 
 
 const socket = io(local); // a changer en server pour héberger le jeu
@@ -13,12 +14,12 @@ let myPlayer = null;
 let myCube = null;
 let myBody = null;
 let  physicsObjects = [];
-let isJumping;
+let isJumping = false;
 
 
 let world;
 await RAPIER.init();
-const gravity = { x: 0, y: pesanteur, z: 0 };
+const gravity = { x: 0, y: pesanteur*2, z: 0 };
 world = new RAPIER.World(gravity);
 
 
@@ -163,15 +164,6 @@ document.addEventListener("keyup", (e) => {
 });
 
 
-function updateJump(){
-  if (myBody) {
-    const vel = myBody.linvel();
-    if (Math.abs(vel.y) < 0.01) {
-      isJumping = false;
-    }
-  }
-}
-
 function syncPhysicsToMeshes() {
   for (const { mesh, body } of physicsObjects) {
     const pos = body.translation();
@@ -182,10 +174,10 @@ function syncPhysicsToMeshes() {
   }
 }
 
+startRaycast(world,myCamera);
 
 function animate() {
   requestAnimationFrame(animate);
-  updateJump();
 
   const movement = { x: 0, y: 0, z: 0 };
   if (keys.KeyW) movement.z -= speed;
@@ -194,16 +186,6 @@ function animate() {
   if (keys.KeyD) movement.x += speed;
 
   if (myBody) myBody.setLinvel(movement, true);
-
-  
-
-  if (keys.Space && isJumping === false) {
-    const vel = myBody.linvel();
-    if (Math.abs(vel.y) < 0.01) {
-      isJumping = true;
-      myBody.applyImpulse({ x: 0, y: 5, z: 0 }, true);
-    }
-  }
 
   
 
