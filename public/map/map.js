@@ -99,7 +99,7 @@ export function createMurs(scene, world , hauteur) {
     const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5); // Taille de la zone de spawn    
     const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
     const spawnMesh = new THREE.Mesh(spawnGeometry, spawnMaterial);    
-    spawnMesh.position.set(-8.75, 0, -8.75); // Position de la zone de spawn
+    spawnMesh.position.set(-12,75, 0.01, -12.75); // Position de la zone de spawn
     spawnMesh.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
     scene.add(spawnMesh);
 
@@ -115,7 +115,7 @@ export function createMurs(scene, world , hauteur) {
     const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5); // Taille de la zone de spawn    
     const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
     const spawnMesh = new THREE.Mesh(spawnGeometry, spawnMaterial);    
-    spawnMesh.position.set(8.75, 0, 8.75); // Position de la zone de spawn
+    spawnMesh.position.set(12.75, 0.01, 12.75); // Position de la zone de spawn
     spawnMesh.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
     scene.add(spawnMesh);
 

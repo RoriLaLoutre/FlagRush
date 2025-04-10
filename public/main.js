@@ -76,8 +76,15 @@ physicsObjects.push({ mesh: player1Cube, body: playerBodies.player1 });
 physicsObjects.push({ mesh: player2Cube,body: playerBodies.player2 });
 
 // Sol visuel
-const groundGeometry = new THREE.BoxGeometry(taille_map*2, 0.2, taille_map*2); 
-const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+const groundGeometry = new THREE.BoxGeometry(taille_map*2, 0.2, taille_map*2);
+
+const texturefloor = new THREE.TextureLoader().load( "./textures/floor.png" );
+texturefloor.wrapS = THREE.RepeatWrapping;
+texturefloor.wrapT = THREE.RepeatWrapping;
+texturefloor.repeat.set(50, 50 );
+texturefloor.anisotropy = 16;
+
+const groundMaterial = new THREE.MeshStandardMaterial({ map : texturefloor });
 const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
 groundMesh.position.set(0, -0.1, 0); 
 
