@@ -78,6 +78,10 @@ io.on('connection', (socket) => {
       console.log("Score updated:", playerScores);
     });
 
+    socket.on("projectile-fired", (data) => {
+      socket.broadcast.emit("projectile-broadcast", data);
+    });
+
 
     socket.on("disconnect", () => {
         if (players.player1 === socket.id) {

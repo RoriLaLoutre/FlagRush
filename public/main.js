@@ -5,10 +5,10 @@ import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2 ,flagMesh } from './ma
 import { speed , taille_map , local , server, pesanteur , hauteurMur ,fps} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
-import { startRaycast, updateProjectiles } from "./raycast/raycast.js";
+import { startRaycast, updateProjectiles, setSocketInstance, spawnProjectileFromData } from "./raycast/raycast.js";
 
 const socket = io(local); // a changer en server pour héberger le jeu
-
+setSocketInstance(socket);
 
 let myPlayer = null;
 let myCube = null;
@@ -175,6 +175,11 @@ function sendMyPosition() {
     z: pos.z,
   });
 }
+
+socket.on("projectile-broadcast", ({ origin, direction }) => {
+  spawnProjectileFromData(world, scene, origin, direction);
+});
+
 
 ///////////////////////////////////////////////////////////// Fin SocketIO /////////////////////////////////////////////////////////
 

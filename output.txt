@@ -1,0 +1,908 @@
+
+======================================================================================
+
+Contenu du fichier : public\camera\camera.js
+
+======================================================================================
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
+
+
+export function updateCamera(cube , controls) {
+  if (!cube) return;
+
+  const offset = new THREE.Vector3(0, 0.5, 0); // position de la caméra sur le cube (légèrement en hauteur)
+  const cubePos = cube.position.clone().add(offset);
+
+  controls.getObject().position.copy(cubePos); // positionne la caméra sur le cube
+}
+
+export const myCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);0
+======================================================================================
+
+Contenu du fichier : public\constant.js
+
+======================================================================================
+// constant pour changer l'url
+
+export const port = 3000; // port du serveur
+export const local = "http://localhost:3000/";
+export const server = "http://flag.techtwins.fr/";
+
+export const speed = 8; // vitesse de déplacement des joueurs
+export const taille_map = 15; // taille de la map
+
+export const pesanteur = -7.5; // force de gravité
+export const hauteurMur = 7.5; 
+export const fps = 60;
+
+0
+======================================================================================
+
+Contenu du fichier : public\index.html
+
+======================================================================================
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FlagRush</title>
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" href="image/x-logo.ico" type="image/x-icon" />
+
+  </head>
+  <body>
+    <div id="hud">
+      <div id="score-container">
+        <div id="score1">Player 1 : 0</div>
+        <div id="score2">Player 2 : 0</div>
+      </div>
+      <div id="crosshair">+</div>
+    </div>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>0
+======================================================================================
+
+Contenu du fichier : public\lightings\light.js
+
+======================================================================================
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
+import {taille_map} from "../constant.js";
+
+export const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 10, 5);
+light.target.position.set(0, 0, 0)
+light.castShadow = true;
+
+// Optional: fine-tune shadow quality
+light.shadow.mapSize.width = 1024;
+light.shadow.mapSize.height = 1024;
+light.shadow.camera.near = 0.5;
+light.shadow.camera.far = 50;
+light.shadow.camera.left = -taille_map;
+light.shadow.camera.right = taille_map;
+light.shadow.camera.top = taille_map;
+light.shadow.camera.bottom = -taille_map;
+
+// Ambient light (soft fill light)
+export const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+0
+======================================================================================
+
+Contenu du fichier : public\main.js
+
+======================================================================================
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
+import { PointerLockControls } from "./controls/controls.js"
+import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2 ,flagMesh } from './map/map.js';
+import { speed , taille_map , local , server, pesanteur , hauteurMur ,fps} from "./constant.js";
+import { updateCamera , myCamera } from "./camera/camera.js"
+import { light , ambient } from "./lightings/light.js";
+import { startRaycast, updateProjectiles } from "./raycast/raycast.js";
+
+const socket = io(local); // a changer en server pour héberger le jeu
+
+
+let myPlayer = null;
+let myCube = null;
+let myBody = null;
+
+let  physicsObjects = [];
+
+let jumpStatus = {
+  isJumping: false,
+  startTime: 0,
+  duration: 650, 
+  maxHeight: 2,
+  baseY: 0,
+};
+
+let world;
+await RAPIER.init();
+const gravity = { x: 0, y: pesanteur*2, z: 0 };
+world = new RAPIER.World(gravity);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb); // bleu ciel
+
+// Rendu
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+// Corps des joueurs
+const playerBodies = {
+  player1: null,
+  player2: null,
+};
+
+const player1Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(-12.75, 5, -12.75);
+playerBodies.player1 = world.createRigidBody(player1Desc);
+playerBodies.player1.lockRotations(true);
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player1);
+
+const player2Desc = RAPIER.RigidBodyDesc.dynamic().setTranslation(12.75, 5, 12.75);  
+playerBodies.player2 = world.createRigidBody(player2Desc);  
+playerBodies.player2.lockRotations(true);
+world.createCollider(RAPIER.ColliderDesc.cuboid(0.25, 0.5, 0.25), playerBodies.player2)
+
+
+
+
+
+// Cubes joueurs
+const geometry = new THREE.BoxGeometry(0.5 , 1, 0.5);
+
+const materialGreen = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+const materialBlue = new THREE.MeshStandardMaterial({ color : 0x0000ff });
+
+const player1Cube = new THREE.Mesh(geometry, materialGreen);
+const player2Cube = new THREE.Mesh(geometry, materialBlue);
+
+const cube2Box = new THREE.Box3().setFromObject(player2Cube);  // creation des box pour intersection avec le flag
+const cube1Box = new THREE.Box3().setFromObject(player1Cube);
+
+
+scene.add(player1Cube);
+scene.add(player2Cube);
+
+physicsObjects.push({ mesh: player1Cube, body: playerBodies.player1 });
+physicsObjects.push({ mesh: player2Cube,body: playerBodies.player2 });
+
+// Sol visuel
+const groundGeometry = new THREE.BoxGeometry(taille_map*2, 0.2, taille_map*2);
+
+const texturefloor = new THREE.TextureLoader().load( "./textures/floor.png" );
+texturefloor.wrapS = THREE.RepeatWrapping;
+texturefloor.wrapT = THREE.RepeatWrapping;
+texturefloor.repeat.set(50, 50 );
+texturefloor.anisotropy = 16;
+
+const groundMaterial = new THREE.MeshStandardMaterial({ map : texturefloor });
+const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+groundMesh.position.set(0, -0.1, 0); 
+
+// Création des murs et zones
+createMurs(scene, world, hauteurMur);
+createFlag(scene);
+const zone1box = zoneSpawn1(scene);
+const zone2box = zoneSpawn2(scene);
+
+let flagBox = new THREE.Box3().setFromObject(flagMesh); // creation de la box pour le drapeau
+
+// Sol physique
+const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
+const groundBody = world.createRigidBody(groundDesc);
+const groundCollider = RAPIER.ColliderDesc.cuboid(taille_map, 0.3, taille_map);
+world.createCollider(groundCollider, groundBody);
+
+scene.add(groundMesh);
+scene.add(light);
+scene.add(ambient);
+scene.add(light.target);
+//shadow casting
+player1Cube.castShadow = true;
+player2Cube.castShadow = true;
+groundMesh.receiveShadow = true;
+
+
+
+////////////////////////////////////////////////// SocketIO Zone /////////////////////////////////////////////////////////
+// Attribution joueur
+socket.on("player-assigned", (player) => {
+  myPlayer = player;
+  myCube = myPlayer === "player1" ? player1Cube : player2Cube;   // cube vert si j1 sinon cube rouge
+  myBody = playerBodies[myPlayer];
+});
+
+socket.on("flag-update", ({ holder }) => {
+  player1HasFlag = holder === "player1";
+  player2HasFlag = holder === "player2";
+
+  if (player1HasFlag) {
+    updateFlagPosition(flagMesh, player1Cube);
+  } else if (player2HasFlag) {
+    updateFlagPosition(flagMesh, player2Cube);
+  } else {
+    updateFlagPosition(flagMesh, null);
+  }
+});
+
+// maj des positions
+socket.on("update-positions", (positions) => {
+
+  if (positions.Player1Position && playerBodies.player1 && myPlayer !== 'player1') {
+    playerBodies.player1.setTranslation(positions.Player1Position, true);
+  }
+  if (positions.Player2Position && playerBodies.player2 && myPlayer !== 'player2') {
+    playerBodies.player2.setTranslation(positions.Player2Position, true);
+  }
+
+
+  // sync visual positions
+  player1Cube.position.set(
+
+    playerBodies.player1.translation().x,
+    playerBodies.player1.translation().y,
+    playerBodies.player1.translation().z
+  );
+
+
+  player2Cube.position.set(
+
+    playerBodies.player2.translation().x,
+    playerBodies.player2.translation().y,
+    playerBodies.player2.translation().z
+  );
+});
+
+// Envoi de ma position au serveur
+function sendMyPosition() {
+  if (!myPlayer || !myBody) return;
+  const pos = myBody.translation();
+  socket.emit("move-cube", {
+    x: pos.x,
+    y: pos.y,
+    z: pos.z,
+  });
+}
+
+///////////////////////////////////////////////////////////// Fin SocketIO /////////////////////////////////////////////////////////
+
+// Clavier
+const keys = {
+  KeyW: false,
+  KeyS: false,
+  KeyA: false,
+  KeyD: false,
+  Space: false,
+  ShiftLeft: false,
+};
+
+
+document.addEventListener("keydown", (e) => {
+  if (e.code in keys) keys[e.code] = true;
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.code in keys) keys[e.code] = false;
+});
+
+// Gestion du saut fluide
+function startJump() {
+  if (!jumpStatus.isJumping && myBody) {
+    const vel = myBody.linvel();
+    if (Math.abs(vel.y) < 0.01) {
+      jumpStatus.isJumping = true;
+      jumpStatus.startTime = performance.now();
+      jumpStatus.baseY = myBody.translation().y;
+    }
+  }
+}
+
+function updateJump(currentTime) {
+  if (!jumpStatus.isJumping || !myBody) return;
+
+  const elapsed = currentTime - jumpStatus.startTime;
+  const t = elapsed / jumpStatus.duration;
+
+  if (t >= 1) {
+    jumpStatus.isJumping = false;
+    return;
+  }
+
+  const x = 2 * t - 1;
+  const y = -x * x + 1;
+
+  const targetY = jumpStatus.baseY + jumpStatus.maxHeight * y;
+  const currentY = myBody.translation().y;
+  const deltaY = targetY - currentY;
+
+  myBody.setLinvel({ x: myBody.linvel().x, y: deltaY * 20, z: myBody.linvel().z }, true);
+}
+
+
+myCamera.lookAt(new THREE.Vector3(1, 0, 1));
+const controls = new PointerLockControls(myCamera, document.body);
+scene.add(controls.getObject());
+
+document.addEventListener('keydown', handleLock);
+document.addEventListener('click', handleLock);
+
+function handleLock() {
+  controls.lock();
+}
+
+// check si le jouer est dans sa zone
+
+function isInSpawnZone(playerCube, spawnBox) {
+  const playerPos = playerCube.position;
+  return (
+    playerPos.x > spawnBox.min.x &&
+    playerPos.x < spawnBox.max.x &&
+    playerPos.z > spawnBox.min.z &&
+    playerPos.z < spawnBox.max.z
+  );
+}
+
+let scorePlayer1 = 0;
+let scorePlayer2 = 0;
+
+let printScorePlayer1 =  document.querySelector("#score1");
+let printScorePlayer2 =  document.querySelector("#score2");
+
+
+
+
+function updateScore() {
+  
+  if (player1HasFlag && isInSpawnZone(player1Cube, zone1box,)) {
+    scorePlayer1 += 1;
+    printScorePlayer1.innerHTML = `Player 1 : ${scorePlayer1}`;;
+    socket.emit("score-update", { player: "player1", score: scorePlayer1 });
+    player1HasFlag = false; // Reset le drapeau
+    console.log("score player 1 : " + scorePlayer1);
+    updateFlagPosition(flagMesh, null);
+  }
+
+  if (player2HasFlag && isInSpawnZone(player2Cube, zone2box)) {
+    scorePlayer2 += 1;
+    printScorePlayer2.innerHTML = `Player 2 : ${scorePlayer2}`;
+    socket.emit("score-update", { player: "player2", score: scorePlayer2 });
+    player2HasFlag = false; // Reset le drapeau
+    console.log("score player 2 : " + scorePlayer2);
+    updateFlagPosition(flagMesh, null);
+  }
+}
+
+
+// logique du jeu et drapeau
+let player1HasFlag = false
+let player2HasFlag = false;
+
+function updateFlagPosition(flagMesh, playerCube) {
+  if ((player1HasFlag || player2HasFlag) && flagMesh && playerCube) {
+    flagMesh.position.set(
+      playerCube.position.x,
+      playerCube.position.y + 1.2,
+      playerCube.position.z
+    );
+  } else if (flagMesh) {
+    flagMesh.position.set(0, 0.5, 0); // reinitialize to center
+  }
+}
+
+
+
+function flagLogic() {
+  if (!myBody) return;
+
+  const pos = myBody.translation();
+
+  cube1Box.setFromObject(player1Cube);
+  cube2Box.setFromObject(player2Cube);
+  flagBox.setFromObject(flagMesh);
+
+  if (!player1HasFlag && !player2HasFlag) {
+
+    if (cube1Box.intersectsBox(flagBox)) {
+      player1HasFlag = true;
+      socket.emit("flag-picked-up", { player: "player1" });
+    }
+  
+    if (cube2Box.intersectsBox(flagBox)) {
+      player2HasFlag = true;
+      socket.emit("flag-picked-up", { player: "player2" });
+    }
+  }
+
+  if (pos.y < -4) {
+    if (myPlayer === "player1" && !player1HasFlag) {
+      myBody.setTranslation({ x: -12.75, y: 5, z: -12.75 }, true);
+      myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    }
+    else if (myPlayer === "player2" && player2HasFlag) {
+      player2HasFlag = false;
+      socket.emit("flag-dropped", { player: "player2" });
+      updateFlagPosition(flagMesh, null);
+    }
+    if (myPlayer === "player2" && !player2HasFlag) {
+      myBody.setTranslation({ x: 12.75, y: 5, z: 12.75 }, true);
+      myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    }
+    else if  (myPlayer === "player1" && player1HasFlag) {
+      player1HasFlag = false;
+      socket.emit("flag-dropped", { player: "player1" });
+      updateFlagPosition(flagMesh, null);
+    }
+  }
+  updateScore();
+}
+
+
+function syncPhysicsToMeshes() {
+  for (const { mesh, body } of physicsObjects) {
+    const pos = body.translation();
+    const rot = body.rotation();
+
+    mesh.position.set(pos.x, pos.y, pos.z);
+    mesh.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+  }
+}
+
+startRaycast(world,myCamera,scene);
+
+function animate(currentTime) {
+
+  setTimeout( () =>{
+    requestAnimationFrame(animate);
+
+    if (myBody && controls.isLocked) {
+      const direction = new THREE.Vector3();
+      const frontVector = new THREE.Vector3();
+      const sideVector = new THREE.Vector3();
+  
+
+      frontVector.set(0, 0, Number(keys.KeyW) - Number(keys.KeyS));
+      sideVector.set(Number(keys.KeyA) - Number(keys.KeyD), 0, 0);
+  
+      direction.subVectors(frontVector, sideVector);
+      direction.normalize().multiplyScalar(speed);
+  
+      const cameraDirection = controls.getDirection(new THREE.Vector3());
+      const right = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0));
+  
+      const moveDir = new THREE.Vector3();
+      moveDir.addScaledVector(cameraDirection, direction.z);
+      moveDir.addScaledVector(right, direction.x);
+  
+      moveDir.y = myBody.linvel().y; // garde la vitesse verticale pour le saut
+  
+      myBody.setLinvel(moveDir, true);
+      if (keys.Space) startJump();
+    }
+
+  
+
+  // update mesh positions
+    player1Cube.position.copy(playerBodies.player1.translation());
+    player2Cube.position.copy(playerBodies.player2.translation());
+    updateProjectiles();
+
+    updateJump(currentTime);
+    sendMyPosition();
+
+    world.step();
+    syncPhysicsToMeshes();
+    updateCamera(myCube , controls);
+    flagLogic();
+
+    if (player1HasFlag) {
+      updateFlagPosition(flagMesh, player1Cube);
+    } else if (player2HasFlag) {
+      updateFlagPosition(flagMesh, player2Cube);
+    }
+
+
+
+
+  } , 1000 / fps)  // limite max 60 fps
+  renderer.render(scene, myCamera);
+}
+
+animate();
+0
+======================================================================================
+
+Contenu du fichier : public\map\map.js
+
+======================================================================================
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js";  
+import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+
+export function createMurs(scene, world , hauteur) {
+
+    const murs = [
+      // murs bas 
+      { x: -1, y: 0 , z: 4, w:0.5, d: 4},
+      { x: 2, y: 0 , z: 3, w:0.5, d: 3},
+      { x: 3.25, y: 0 , z: 1.5, w:3, d: 0.5},
+      { x: -7, y: 0 , z: 0.5, w:0.5, d: 2},
+      { x: -6.5, y: 0 , z: 1.25, w:1, d: 0.5},
+
+      { x: 5.3, y: 0 , z: 7.25, w:3, d: 0.5},
+      { x: 7, y: 0 , z: 6, w:0.5, d: 3},
+      { x: -5, y: 0 , z: 4.5, w:0.5, d: 1},
+      { x: -5.8, y: 0 , z: 4.21, w:2, d: 0.5},
+
+      // murs haut
+      { x: 1, y: 0, z: -4, w: 0.5, d: 4 },
+      { x: -2, y: 0, z: -3, w: 0.5, d: 3 },
+      { x: -3.25, y: 0, z: -1.5, w: 3, d: 0.5 },
+      { x: 7, y: 0, z: -0.5, w: 0.5, d: 2 },
+      { x: 6.5, y: 0, z: -1.25, w: 1, d: 0.5 },
+
+      { x: -5.3, y: 0, z: -7.25, w: 3, d: 0.5 },
+      { x: -7, y: 0, z: -6, w: 0.5, d: 3 },
+      { x: 5, y: 0, z: -4.5, w: 0.5, d: 1 },
+      { x: 5.8, y: 0, z: -4.21, w: 2, d: 0.5 },
+
+      { x: 9.8, y: 0, z: 11.21, w: 5, d: 0.5 },
+      { x: -9.8, y: 0, z: 11.21, w: 5, d: 0.5 },
+      { x: 9.8, y: 0, z: -11.21, w: 5, d: 0.5 },
+      { x: -9.8, y: 0, z: -11.21, w: 5, d: 0.5 },
+
+      // New walls
+      { x: 2, y: 0, z: -11, w: 5, d: 0.5 },
+      { x: 4.3, y: 0, z: -10, w: 0.5, d: 2 },
+      { x: -4.3, y: 0, z: -13, w: 0.5, d: 2 },
+      { x: -11, y: 0, z: -4, w: 2, d: 3 },
+      { x: -7.5, y: 0, z: 10, w: 0.5, d: 3 },
+
+      { x: -2, y: 0, z: 11, w: 5, d: 0.5 },
+      { x: -4.3, y: 0, z: 10, w: 0.5, d: 2 },
+      { x: 4.3, y: 0, z: 13, w: 0.5, d: 2 },
+      { x: 11, y: 0, z: 4, w: 2, d: 3 },
+      { x: 7.5, y: 0, z: -10, w: 0.5, d: 3 },
+    ];
+  
+    murs.forEach(mur => {
+      const geometry = new THREE.BoxGeometry(mur.w, hauteur, mur.d);
+      const texture = new THREE.TextureLoader().load( "./textures/brick.png" );
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(5, 10 );
+      texture.anisotropy = 16; // Améliore la qualité de la texture
+      
+      const material = new THREE.MeshStandardMaterial({
+          map: texture,
+
+       });
+      
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(mur.x, mur.y, mur.z);
+      scene.add(mesh);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+  
+      const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(mur.x, mur.y, mur.z);
+      const body = world.createRigidBody(bodyDesc);
+      const collider = RAPIER.ColliderDesc.cuboid(mur.w / 2, hauteur / 2, mur.d / 2);
+      world.createCollider(collider, body);
+    });
+  }
+
+export let flagMesh = null;
+
+export function createFlag(scene) {
+
+
+  // Création du drapeau
+    const flagGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+    const flagMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
+    flagMesh = new THREE.Mesh(flagGeometry, flagMaterial);
+    flagMesh.position.set(0, 0.5, 0); // Position initiale du drapeau
+    flagMesh.geometry.computeBoundingBox();
+    scene.add(flagMesh);
+    // Création du sol rouge
+
+
+    const groundGeometry = new THREE.PlaneGeometry(3, 3); // Taille du sol
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
+    const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
+    groundMesh.rotation.x = - Math.PI / 2; // Incliner le sol pour qu'il soit horizontal
+    groundMesh.position.set(0, 0.001, 0); // Position du sol
+    scene.add(groundMesh);
+  }
+   
+  export function zoneSpawn1(scene) {
+    const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5);    
+    const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); //zone verte
+    const spawnMeshvert = new THREE.Mesh(spawnGeometry, spawnMaterial);    
+    spawnMeshvert.position.set(-12.75, 0.01, -12.75); // Position de la zone de spawn
+    spawnMeshvert.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
+    scene.add(spawnMeshvert);
+
+    const box = new THREE.Box3().setFromCenterAndSize(
+      spawnMeshvert.position,
+      new THREE.Vector3(2.5, 1, 2.5) // width, height (thin), depth
+    );
+
+    return box;
+  }
+
+  export function zoneSpawn2(scene) {
+    const spawnGeometry = new THREE.PlaneGeometry(2.5,2.5);  
+    const spawnMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff }); //zone bleue
+    const spawnMeshrouge = new THREE.Mesh(spawnGeometry, spawnMaterial);    
+    spawnMeshrouge.position.set(12.75, 0.01, 12.75); // Position de la zone de spawn
+    spawnMeshrouge.rotation.x = - Math.PI / 2; // Incliner la zone de spawn pour qu'elle soit horizontale
+    scene.add(spawnMeshrouge);
+
+    const box = new THREE.Box3().setFromCenterAndSize(
+      spawnMeshrouge.position,
+      new THREE.Vector3(2.5, 1, 2.5) // width, height (thin), depth
+    );
+
+    return box;
+  }
+  0
+======================================================================================
+
+Contenu du fichier : public\raycast\raycast.js
+
+======================================================================================
+import * as THREE from "https://esm.sh/three@0.160";
+import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+
+const projectiles = [];
+
+export function startRaycast(world, camera, scene) {
+    window.addEventListener('click', () => {
+        // Get camera position and direction
+        const origin = new THREE.Vector3();
+        camera.getWorldPosition(origin);
+        
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        
+        // Small offset to avoid starting inside player
+        origin.add(direction.clone().multiplyScalar(0.5));
+        
+        // Create Rapier ray
+        const rayOrigin = new RAPIER.Vector3(origin.x, origin.y, origin.z);
+        const rayDirection = new RAPIER.Vector3(direction.x, direction.y, direction.z);
+        const ray = new RAPIER.Ray(rayOrigin, rayDirection);
+        
+        // Cast ray
+        const maxDistance = 75;
+        const hit = world.castRay(ray, maxDistance, true);
+
+        if (hit && hit.toi !== undefined) {
+            const hitPoint = ray.pointAt(hit.toi);
+            console.log("Hit detected at:", hitPoint);
+
+            createProjectile(world, scene, origin, direction);
+        } else {
+            console.log("No hit detected.");
+            createProjectile(world, scene, origin, direction);
+        }
+    });
+}
+
+function createProjectile(world, scene, origin, direction) {
+    // Create visual sphere
+    const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+    const material = new THREE.MeshStandardMaterial({ 
+        color: 0xff0000,
+        emissive: 0xff3333,
+        emissiveIntensity: 0.5
+    });
+    const projectileMesh = new THREE.Mesh(geometry, material);
+    projectileMesh.position.copy(origin);
+    scene.add(projectileMesh);
+
+    // Create physics body
+    const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(origin.x, origin.y, origin.z)
+        .setLinearDamping(0.1); // Add some damping
+    const rigidBody = world.createRigidBody(rigidBodyDesc);
+
+    const colliderDesc = RAPIER.ColliderDesc.ball(0.2)
+        .setRestitution(0.7) // Add bounce
+        .setFriction(0.1);
+    world.createCollider(colliderDesc, rigidBody);
+
+    // Apply velocity
+    const speed = 30;
+    rigidBody.setLinvel({
+        x: direction.x * speed,
+        y: direction.y * speed,
+        z: direction.z * speed
+    });
+
+    // Add to projectiles array
+    projectiles.push({ 
+        mesh: projectileMesh, 
+        body: rigidBody,
+        createdAt: performance.now() 
+    });
+}
+
+export function updateProjectiles(world, scene) {
+    const now = performance.now();
+    const maxLifetime = 5000; // 5 seconds
+    
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const projectile = projectiles[i];
+        const pos = projectile.body.translation();
+        
+        // Update position
+        projectile.mesh.position.set(pos.x, pos.y, pos.z);
+    }
+}0
+======================================================================================
+
+Contenu du fichier : public\style.css
+
+======================================================================================
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+.inner::-webkit-scrollbar {
+  display: none;
+}
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Pour ne pas bloquer les clics */
+  font-family: Arial, sans-serif;
+  color: white;
+  z-index: 10;
+}
+
+#score-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  color: rgba(255, 255, 255, 0.569);
+  z-index: 20;
+  user-select: none;
+}0
+======================================================================================
+
+Contenu du fichier : server.js
+
+======================================================================================
+import express from 'express';
+import {Server} from 'socket.io';
+import {createServer} from 'http';
+import {port, local} from './public/constant.js'; // importation des constantes
+
+
+const app = express();
+const server = createServer(app);
+
+const io = new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
+
+app.use(express.static("public"));
+
+let players = {
+    player1 : null,
+    player2 : null
+};
+
+let cubePositions = {
+    Player1Position: { x: 0, y: 100, z: 0 },
+    Player2Position: { x: 0, y: 100, z: 0 },
+};
+
+let playerScores = {
+  player1: 0,
+  player2: 0,
+};
+
+let flagHolder = null; // "player1", "player2", or null
+
+io.on('connection', (socket) => {
+
+    let assignedPlayer = null
+
+    if (!players.player1) {           //si pas ou plus de joueur 1
+        players.player1 = socket.id;
+        assignedPlayer = 'player1';
+    } else if (!players.player2) { // meme chose pour j2
+        players.player2 = socket.id;
+        assignedPlayer = 'player2';
+    } else {
+        console.log("Server full, disconnecting user", socket.id);
+        socket.emit("error", "Game is full");
+        socket.disconnect(true);
+        return;
+    }
+
+    console.log(`Player ${assignedPlayer} connected:`, socket.id);
+    socket.emit("player-assigned", assignedPlayer);
+    io.emit("update-positions", cubePositions);
+
+    socket.on("move-cube", (position) => {
+        if (!assignedPlayer) return;
+    
+        const key = assignedPlayer === "player1" ? "Player1Position" : "Player2Position";
+        cubePositions[key] = position;
+        io.emit("update-positions", cubePositions);
+      });
+
+    socket.on("flag-picked-up", ({ player }) => {
+        flagHolder = player;
+        io.emit("flag-update", { holder: flagHolder });
+    });
+
+    socket.on("flag-dropped", () => {
+        flagHolder = null;
+        io.emit("flag-update", { holder: null });
+    });
+
+    socket.on("score-update", ({ player, score }) => {
+      playerScores[player] = score;
+      io.emit("score-update", playerScores);
+      console.log("Score updated:", playerScores);
+    });
+
+
+    socket.on("disconnect", () => {
+        if (players.player1 === socket.id) {
+          players.player1 = null;
+          console.log("Player1 disconnected:", socket.id);
+        } else if (players.player2 === socket.id) {
+          players.player2 = null;
+          console.log("Player2 disconnected:", socket.id);
+        }
+      });
+});
+
+
+server.listen(port, () => {
+    console.log(`Server running on ${local}`);
+
+});
+
+0
