@@ -232,7 +232,7 @@ function syncPhysicsToMeshes() {
   }
 }
 
-startRaycast(world,myCamera);
+startRaycast(world,myCamera,scene);
 
 function animate(currentTime) {
   requestAnimationFrame(animate);
