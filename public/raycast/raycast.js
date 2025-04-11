@@ -33,7 +33,7 @@ export function startRaycast(world, camera, scene) {
                     direction: { x: direction.x, y: direction.y, z: direction.z }
                 });
 
-            }, 10); // fire rate (ms) — adjust as you like
+            }, 150); // fire rate (ms) — adjust as you like
         }
     });
 
@@ -70,7 +70,8 @@ function createProjectile(world, scene, origin, direction) {
 
     const colliderDesc = RAPIER.ColliderDesc.ball(0.2)
         .setRestitution(0.7)
-        .setFriction(2);
+        .setFriction(2)
+        .setDensity(5);
     world.createCollider(colliderDesc, rigidBody);
 
     const speed = 30;
