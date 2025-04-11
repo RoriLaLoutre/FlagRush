@@ -25,6 +25,13 @@ let cubePositions = {
     Player2Position: { x: 0, y: 100, z: 0 },
 };
 
+let playerScores = {
+  player1: 0,
+  player2: 0,
+};
+
+let flagHolder = null; // "player1", "player2", or null
+
 io.on('connection', (socket) => {
 
     let assignedPlayer = null
@@ -53,6 +60,21 @@ io.on('connection', (socket) => {
         cubePositions[key] = position;
         io.emit("update-positions", cubePositions);
       });
+
+    socket.on("flag-picked-up", ({ player }) => {
+        flagHolder = player;
+        io.emit("flag-update", { holder: flagHolder });
+    });
+
+    socket.on("flag-dropped", () => {
+        flagHolder = null;
+        io.emit("flag-update", { holder: null });
+    });
+
+    socket.on("score-update", ({ player, score }) => {
+      playerScores[player] = score;
+      io.emit("score-update", playerScores);
+    });
 
 
     socket.on("disconnect", () => {

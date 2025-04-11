@@ -76,13 +76,18 @@ export function createMurs(scene, world , hauteur) {
 export let flagMesh = null;
 
 export function createFlag(scene) {
+
+
   // Création du drapeau
     const flagGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
     const flagMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
     flagMesh = new THREE.Mesh(flagGeometry, flagMaterial);
     flagMesh.position.set(0, 0.5, 0); // Position initiale du drapeau
+    flagMesh.geometry.computeBoundingBox();
     scene.add(flagMesh);
     // Création du sol rouge
+
+
     const groundGeometry = new THREE.PlaneGeometry(3, 3); // Taille du sol
     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
     const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
