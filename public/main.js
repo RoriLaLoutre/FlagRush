@@ -257,9 +257,17 @@ function isInSpawnZone(playerCube, spawnBox) {
 let scorePlayer1 = 0;
 let scorePlayer2 = 0;
 
+let printScorePlayer1 =  document.querySelector("#score1");
+let printScorePlayer2 =  document.querySelector("#score2");
+
+
+
+
 function updateScore() {
+  
   if (player1HasFlag && isInSpawnZone(player1Cube, zone1box,)) {
     scorePlayer1 += 1;
+    printScorePlayer1.innerHTML = `Player 1 : ${scorePlayer1}`;;
     socket.emit("score-update", { player: "player1", score: scorePlayer1 });
     player1HasFlag = false; // Reset le drapeau
     console.log("score player 1 : " + scorePlayer1);
@@ -268,12 +276,14 @@ function updateScore() {
 
   if (player2HasFlag && isInSpawnZone(player2Cube, zone2box)) {
     scorePlayer2 += 1;
+    printScorePlayer2.innerHTML = `Player 2 : ${scorePlayer2}`;
     socket.emit("score-update", { player: "player2", score: scorePlayer2 });
     player2HasFlag = false; // Reset le drapeau
     console.log("score player 2 : " + scorePlayer2);
     updateFlagPosition(flagMesh, null);
   }
 }
+
 
 // logique du jeu et drapeau
 let player1HasFlag = false
