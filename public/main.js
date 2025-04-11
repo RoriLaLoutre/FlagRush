@@ -6,7 +6,7 @@ import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2 ,flagMesh } from './ma
 import { speed , taille_map , local , server, pesanteur , hauteurMur} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
-import { startRaycast } from "./raycast/raycast.js";
+import { startRaycast, updateProjectiles } from "./raycast/raycast.js";
 
 const socket = io(local); // a changer en server pour héberger le jeu
 
@@ -315,6 +315,7 @@ function animate(currentTime) {
       flagMesh.position.set(0, 0.5, 0); // position initiale au centre
     }
   } , 1000 / 60)
+  updateProjectiles();
   renderer.render(scene, myCamera);
 }
 
