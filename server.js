@@ -74,6 +74,7 @@ io.on('connection', (socket) => {
     socket.on("score-update", ({ player, score }) => {
       playerScores[player] = score;
       io.emit("score-update", playerScores);
+      console.log("Score updated:", playerScores);
     });
 
 

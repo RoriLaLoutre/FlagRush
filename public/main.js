@@ -94,8 +94,8 @@ groundMesh.position.set(0, -0.1, 0);
 // Création des murs et zones
 createMurs(scene, world, hauteurMur);
 createFlag(scene);
-zoneSpawn1(scene);
-zoneSpawn2(scene);
+const zone1box = zoneSpawn1(scene);
+const zone2box = zoneSpawn2(scene);
 
 let flagBox = new THREE.Box3().setFromObject(flagMesh); // creation de la box pour le drapeau
 
@@ -244,13 +244,13 @@ function handleLock() {
 
 // check si le jouer est dans sa zone
 
-function isInSpawnZone(playerCube, spawnZone) {
+function isInSpawnZone(playerCube, spawnBox) {
   const playerPos = playerCube.position;
   return (
-    playerPos.x > spawnZone.min.x &&
-    playerPos.x < spawnZone.max.x &&
-    playerPos.z > spawnZone.min.z &&
-    playerPos.z < spawnZone.max.z
+    playerPos.x > spawnBox.min.x &&
+    playerPos.x < spawnBox.max.x &&
+    playerPos.z > spawnBox.min.z &&
+    playerPos.z < spawnBox.max.z
   );
 }
 
@@ -258,16 +258,20 @@ let scorePlayer1 = 0;
 let scorePlayer2 = 0;
 
 function updateScore() {
-  if (player1HasFlag && isInSpawnZone(player1Cube, zoneSpawn1)) {
+  if (player1HasFlag && isInSpawnZone(player1Cube, zone1box,)) {
     scorePlayer1 += 1;
     socket.emit("score-update", { player: "player1", score: scorePlayer1 });
     player1HasFlag = false; // Reset le drapeau
+    console.log("score player 1 : " + scorePlayer1);
+    updateFlagPosition(flagMesh, null);
   }
 
-  if (player2HasFlag && isInSpawnZone(player2Cube, zoneSpawn2)) {
+  if (player2HasFlag && isInSpawnZone(player2Cube, zone2box)) {
     scorePlayer2 += 1;
     socket.emit("score-update", { player: "player2", score: scorePlayer2 });
     player2HasFlag = false; // Reset le drapeau
+    console.log("score player 2 : " + scorePlayer2);
+    updateFlagPosition(flagMesh, null);
   }
 }
 
