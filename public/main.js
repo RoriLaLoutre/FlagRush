@@ -304,49 +304,49 @@ function updateFlagPosition(flagMesh, playerCube) {
 
 
 function flagLogic() {
-    if (!myBody) return;
+  if (!myBody) return;
 
-    const pos = myBody.translation();
+  const pos = myBody.translation();
 
-    cube1Box.setFromObject(player1Cube);
-    cube2Box.setFromObject(player2Cube);
-    flagBox.setFromObject(flagMesh);
+  cube1Box.setFromObject(player1Cube);
+  cube2Box.setFromObject(player2Cube);
+  flagBox.setFromObject(flagMesh);
 
-    if (!player1HasFlag && !player2HasFlag) {
+  if (!player1HasFlag && !player2HasFlag) {
 
-      if (cube1Box.intersectsBox(flagBox)) {
-        player1HasFlag = true;
-        socket.emit("flag-picked-up", { player: "player1" });
-      }
-    
-      if (cube2Box.intersectsBox(flagBox)) {
-        player2HasFlag = true;
-        socket.emit("flag-picked-up", { player: "player2" });
-      }
+    if (cube1Box.intersectsBox(flagBox)) {
+      player1HasFlag = true;
+      socket.emit("flag-picked-up", { player: "player1" });
     }
-
-    if (player1HasFlag && pos.y < -4) {
-      player1HasFlag = false;
-      socket.emit("flag-dropped");
-
-
-      if (myPlayer === "player1") {
-        myBody.setTranslation({ x: -12.75, y: 5, z: -12.75 }, true); // zoneSpawn1
-        myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      }
+  
+    if (cube2Box.intersectsBox(flagBox)) {
+      player2HasFlag = true;
+      socket.emit("flag-picked-up", { player: "player2" });
     }
-    
-    if (player2HasFlag && pos.y < -4) {
-      player2HasFlag = false;
-      socket.emit("flag-dropped");
-
-      if (myPlayer === "player2") {
-        myBody.setTranslation({ x: 12.75, y: 5, z: 12.75 }, true); // zoneSpawn2
-        myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      }
-    }
-    updateScore();
   }
+
+  if (pos.y < -4) {
+    if (myPlayer === "player1" && !player1HasFlag) {
+      myBody.setTranslation({ x: -12.75, y: 5, z: -12.75 }, true);
+      myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    }
+    else if (myPlayer === "player2" && player2HasFlag) {
+      player2HasFlag = false;
+      socket.emit("flag-dropped", { player: "player2" });
+      updateFlagPosition(flagMesh, null);
+    }
+    if (myPlayer === "player2" && !player2HasFlag) {
+      myBody.setTranslation({ x: 12.75, y: 5, z: 12.75 }, true);
+      myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    }
+    else if  (myPlayer === "player1" && player1HasFlag) {
+      player1HasFlag = false;
+      socket.emit("flag-dropped", { player: "player1" });
+      updateFlagPosition(flagMesh, null);
+    }
+  }
+  updateScore();
+}
 
 
 function syncPhysicsToMeshes() {
@@ -396,7 +396,7 @@ function animate(currentTime) {
   // update mesh positions
     player1Cube.position.copy(playerBodies.player1.translation());
     player2Cube.position.copy(playerBodies.player2.translation());
-
+    updateProjectiles();
 
     updateJump(currentTime);
     sendMyPosition();
@@ -416,7 +416,6 @@ function animate(currentTime) {
 
 
   } , 1000 / fps)  // limite max 60 fps
-  updateProjectiles();
   renderer.render(scene, myCamera);
 }
 
