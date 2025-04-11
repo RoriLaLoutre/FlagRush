@@ -96,7 +96,7 @@ io.on('connection', (socket) => {
 
 
 server.listen(port, () => {
-    console.log(`Server running on ${local}`);
+    console.log(`Server running on http://flag.techtwins.fr/`);
 
 });
 
