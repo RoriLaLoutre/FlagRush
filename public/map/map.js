@@ -45,6 +45,38 @@ export function createMurs(scene, world , hauteur) {
       { x: 4.3, y: 0, z: 13, w: 0.5, d: 2 },
       { x: 11, y: 0, z: 4, w: 2, d: 3 },
       { x: 7.5, y: 0, z: -10, w: 0.5, d: 3 },
+
+
+      { x: -5.3, y: 10, z: -7.25, w: 2, d: 2 },
+      { x: -11, y: 15, z: -4, w: 2, d: 2 },
+      { x: -2, y: 18, z: -11, w: 2, d: 2 },
+      { x: 2, y: 20, z: 11, w: 2, d: 2 },
+      { x: -3, y: 23, z: 5, w: 2, d: 2 },
+      { x: 3, y: 25, z: -5, w: 2, d: 2 },
+      { x: -7.5, y: 28, z: -10, w: 2, d: 2 },
+      { x: -10.5, y: 35, z: -7.25, w: 2, d: 2 },
+      { x: -7.5, y: 45, z: 10.5, w: 2, d: 2 },
+      { x: -10.5, y: 50, z: 7.25, w: 2, d: 2 },
+      { x: 7.5, y: 55, z: -10.5, w: 2, d: 2 },
+      { x: 10.5, y: 60, z: -7.25, w: 2, d: 2 },
+      { x: 7.5, y: 70, z: 10.5, w: 2, d: 2 },
+      { x: 10.5, y: 75, z: 7.25, w: 2, d: 2 },
+      { x: -5.3, y: 80, z: 7.25, w: 2, d: 2 },
+      { x: -11, y: 85, z: 4, w: 2, d: 2 },
+      { x: -2, y: 90, z: 11, w: 2, d: 2 },
+      { x: -3, y: 95, z: -5, w: 2, d: 2 },
+      { x: -7.5, y: 100, z: -10.5, w: 2, d: 2 },
+      { x: -10.5, y: 105, z: -7.25, w: 2, d: 2 },
+      { x: 7.5, y: 110, z: 10.5, w: 2, d: 2 },
+      { x: 10.5, y: 115, z: 7.25, w: 2, d: 2 },
+      { x: -5.3, y: 120, z: -7.25, w: 2, d: 2 },
+      { x: -11, y: 125, z: -4, w: 2, d: 2 },
+      { x: -2, y: 130, z: -11, w: 2, d: 2 },
+      { x: -3, y: 135, z: -5, w: 2, d: 2 },
+      { x: -7.5, y: 140, z: -10.5, w: 2, d: 2 },
+      { x: -10.5, y: 145, z: -7.25, w: 2, d: 2 },
+
+      
     ];
   
     murs.forEach(mur => {
@@ -82,7 +114,7 @@ export function createFlag(scene) {
     const flagGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
     const flagMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
     flagMesh = new THREE.Mesh(flagGeometry, flagMaterial);
-    flagMesh.position.set(0, 0.5, 0); // Position initiale du drapeau
+    flagMesh.position.set(0, 20, 0); // Position initiale du drapeau
     flagMesh.geometry.computeBoundingBox();
     scene.add(flagMesh);
     // Création du sol rouge
@@ -92,7 +124,7 @@ export function createFlag(scene) {
     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
     const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
     groundMesh.rotation.x = - Math.PI / 2; // Incliner le sol pour qu'il soit horizontal
-    groundMesh.position.set(0, 0.001, 0); // Position du sol
+    groundMesh.position.set(0, 20, 0); // Position du sol
     scene.add(groundMesh);
   }
    
