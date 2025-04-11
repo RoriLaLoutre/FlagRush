@@ -2,8 +2,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.m
 import { PointerLockControls } from "./controls/controls.js"
 import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import { createMurs , createFlag ,zoneSpawn1 , zoneSpawn2 ,flagMesh } from './map/map.js';
-
-import { speed , taille_map , local , server, pesanteur , hauteurMur} from "./constant.js";
+import { speed , taille_map , local , server, pesanteur , hauteurMur ,fps} from "./constant.js";
 import { updateCamera , myCamera } from "./camera/camera.js"
 import { light , ambient } from "./lightings/light.js";
 import { startRaycast, updateProjectiles } from "./raycast/raycast.js";
@@ -69,6 +68,10 @@ const materialBlue = new THREE.MeshStandardMaterial({ color : 0x0000ff });
 const player1Cube = new THREE.Mesh(geometry, materialGreen);
 const player2Cube = new THREE.Mesh(geometry, materialBlue);
 
+const cube2Box = new THREE.Box3().setFromObject(player2Cube);  // creation des box pour intersection avec le flag
+const cube1Box = new THREE.Box3().setFromObject(player1Cube);
+
+
 scene.add(player1Cube);
 scene.add(player2Cube);
 
@@ -91,8 +94,10 @@ groundMesh.position.set(0, -0.1, 0);
 // Création des murs et zones
 createMurs(scene, world, hauteurMur);
 createFlag(scene);
-zoneSpawn1(scene);
-zoneSpawn2(scene);
+const zone1box = zoneSpawn1(scene);
+const zone2box = zoneSpawn2(scene);
+
+let flagBox = new THREE.Box3().setFromObject(flagMesh); // creation de la box pour le drapeau
 
 // Sol physique
 const groundDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
@@ -109,11 +114,27 @@ player1Cube.castShadow = true;
 player2Cube.castShadow = true;
 groundMesh.receiveShadow = true;
 
+
+
+////////////////////////////////////////////////// SocketIO Zone /////////////////////////////////////////////////////////
 // Attribution joueur
 socket.on("player-assigned", (player) => {
   myPlayer = player;
   myCube = myPlayer === "player1" ? player1Cube : player2Cube;   // cube vert si j1 sinon cube rouge
   myBody = playerBodies[myPlayer];
+});
+
+socket.on("flag-update", ({ holder }) => {
+  player1HasFlag = holder === "player1";
+  player2HasFlag = holder === "player2";
+
+  if (player1HasFlag) {
+    updateFlagPosition(flagMesh, player1Cube);
+  } else if (player2HasFlag) {
+    updateFlagPosition(flagMesh, player2Cube);
+  } else {
+    updateFlagPosition(flagMesh, null);
+  }
 });
 
 // maj des positions
@@ -155,6 +176,8 @@ function sendMyPosition() {
   });
 }
 
+///////////////////////////////////////////////////////////// Fin SocketIO /////////////////////////////////////////////////////////
+
 // Clavier
 const keys = {
   KeyW: false,
@@ -164,31 +187,6 @@ const keys = {
   Space: false,
   ShiftLeft: false,
 };
-
-// Drapeau : 
-let hasFlag = false;
-function checkFlagZone() {
-  if (!myBody) return;
-
-  const pos = myBody.translation();
-
-  // Si le joueur tombe dans le vide, il perd le drapeau
-  if (pos.y < -2) {
-    hasFlag = false;
-    console.log(" Le joueur a perdu le drapeau !");
-      // drapeau reviens au milieu A Faire  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    return;
-  }
-
-  // Si le joueur n'a pas encore le drapeau, vérifier s'il est dans la zone pour le prendre
-  if (!hasFlag) {
-      // ne marche que si le drapeau est dedans donc non
-    if ((pos.z >= -1.5 && pos.z <= 1.5) && (pos.x >= -1.5 && pos.x <= 1.5)) {
-      hasFlag = true;
-      console.log("🎌 Le joueur a capturé le drapeau !");
-    }
-  }
-}
 
 
 document.addEventListener("keydown", (e) => {
@@ -244,6 +242,111 @@ function handleLock() {
   controls.lock();
 }
 
+// check si le jouer est dans sa zone
+
+function isInSpawnZone(playerCube, spawnBox) {
+  const playerPos = playerCube.position;
+  return (
+    playerPos.x > spawnBox.min.x &&
+    playerPos.x < spawnBox.max.x &&
+    playerPos.z > spawnBox.min.z &&
+    playerPos.z < spawnBox.max.z
+  );
+}
+
+let scorePlayer1 = 0;
+let scorePlayer2 = 0;
+
+let printScorePlayer1 =  document.querySelector("#score1");
+let printScorePlayer2 =  document.querySelector("#score2");
+
+
+
+
+function updateScore() {
+  
+  if (player1HasFlag && isInSpawnZone(player1Cube, zone1box,)) {
+    scorePlayer1 += 1;
+    printScorePlayer1.innerHTML = `Player 1 : ${scorePlayer1}`;;
+    socket.emit("score-update", { player: "player1", score: scorePlayer1 });
+    player1HasFlag = false; // Reset le drapeau
+    console.log("score player 1 : " + scorePlayer1);
+    updateFlagPosition(flagMesh, null);
+  }
+
+  if (player2HasFlag && isInSpawnZone(player2Cube, zone2box)) {
+    scorePlayer2 += 1;
+    printScorePlayer2.innerHTML = `Player 2 : ${scorePlayer2}`;
+    socket.emit("score-update", { player: "player2", score: scorePlayer2 });
+    player2HasFlag = false; // Reset le drapeau
+    console.log("score player 2 : " + scorePlayer2);
+    updateFlagPosition(flagMesh, null);
+  }
+}
+
+
+// logique du jeu et drapeau
+let player1HasFlag = false
+let player2HasFlag = false;
+
+function updateFlagPosition(flagMesh, playerCube) {
+  if ((player1HasFlag || player2HasFlag) && flagMesh && playerCube) {
+    flagMesh.position.set(
+      playerCube.position.x,
+      playerCube.position.y + 1.2,
+      playerCube.position.z
+    );
+  } else if (flagMesh) {
+    flagMesh.position.set(0, 0.5, 0); // reinitialize to center
+  }
+}
+
+
+
+function flagLogic() {
+    if (!myBody) return;
+
+    const pos = myBody.translation();
+
+    cube1Box.setFromObject(player1Cube);
+    cube2Box.setFromObject(player2Cube);
+    flagBox.setFromObject(flagMesh);
+
+    if (!player1HasFlag && !player2HasFlag) {
+
+      if (cube1Box.intersectsBox(flagBox)) {
+        player1HasFlag = true;
+        socket.emit("flag-picked-up", { player: "player1" });
+      }
+    
+      if (cube2Box.intersectsBox(flagBox)) {
+        player2HasFlag = true;
+        socket.emit("flag-picked-up", { player: "player2" });
+      }
+    }
+
+    if (player1HasFlag && pos.y < -4) {
+      player1HasFlag = false;
+      socket.emit("flag-dropped");
+
+
+      if (myPlayer === "player1") {
+        myBody.setTranslation({ x: -12.75, y: 5, z: -12.75 }, true); // zoneSpawn1
+        myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      }
+    }
+    
+    if (player2HasFlag && pos.y < -4) {
+      player2HasFlag = false;
+      socket.emit("flag-dropped");
+
+      if (myPlayer === "player2") {
+        myBody.setTranslation({ x: 12.75, y: 5, z: 12.75 }, true); // zoneSpawn2
+        myBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      }
+    }
+    updateScore();
+  }
 
 
 function syncPhysicsToMeshes() {
@@ -262,10 +365,6 @@ function animate(currentTime) {
 
   setTimeout( () =>{
     requestAnimationFrame(animate);
-
-    checkFlagZone();
-  
-
 
     if (myBody && controls.isLocked) {
       const direction = new THREE.Vector3();
@@ -298,23 +397,25 @@ function animate(currentTime) {
     player1Cube.position.copy(playerBodies.player1.translation());
     player2Cube.position.copy(playerBodies.player2.translation());
 
+
     updateJump(currentTime);
     sendMyPosition();
 
     world.step();
     syncPhysicsToMeshes();
     updateCamera(myCube , controls);
-    if (hasFlag && myCube && flagMesh) {
-      flagMesh.position.set(
-        myCube.position.x,
-        myCube.position.y + 1.2,
-        myCube.position.z
-      );
-    } else if (flagMesh && !hasFlag) {
-    // Remettre le drapeau à sa position d’origine si perdu
-      flagMesh.position.set(0, 0.5, 0); // position initiale au centre
+    flagLogic();
+
+    if (player1HasFlag) {
+      updateFlagPosition(flagMesh, player1Cube);
+    } else if (player2HasFlag) {
+      updateFlagPosition(flagMesh, player2Cube);
     }
-  } , 1000 / 60)
+
+
+
+
+  } , 1000 / fps)  // limite max 60 fps
   updateProjectiles();
   renderer.render(scene, myCamera);
 }

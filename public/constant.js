@@ -9,4 +9,5 @@ export const taille_map = 15; // taille de la map
 
 export const pesanteur = -7.5; // force de gravité
 export const hauteurMur = 7.5; 
+export const fps = 60;
 
