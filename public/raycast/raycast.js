@@ -8,42 +8,27 @@ export function setSocketInstance(io) {
     socket = io;
 }
 
-let isMouseDown = false;
-let fireInterval = null;
-
 export function startRaycast(world, camera, scene) {
-    window.addEventListener('mousedown', () => {
-        isMouseDown = true;
+    window.addEventListener('click', () => {
+        if (!socket) return;
 
-        if (!fireInterval) {
-            fireInterval = setInterval(() => {
-                if (!isMouseDown || !socket) return;
+        const origin = new THREE.Vector3();
+        camera.getWorldPosition(origin);
 
-                const origin = new THREE.Vector3();
-                camera.getWorldPosition(origin);
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        origin.add(direction.clone().multiplyScalar(0.5)); // décaler le point d'origine
 
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-                origin.add(direction.clone().multiplyScalar(0.5));
+        // Crée et affiche le projectile localement
+        createProjectile(world, scene, origin, direction);
 
-                createProjectile(world, scene, origin, direction);
-
-                socket.emit("projectile-fired", {
-                    origin: { x: origin.x, y: origin.y, z: origin.z },
-                    direction: { x: direction.x, y: direction.y, z: direction.z }
-                });
-
-            }, 150); // fire rate (ms) — adjust as you like
-        }
-    });
-
-    window.addEventListener('mouseup', () => {
-        isMouseDown = false;
-        clearInterval(fireInterval);
-        fireInterval = null;
+        // Envoie le projectile au serveur
+        socket.emit("projectile-fired", {
+            origin: { x: origin.x, y: origin.y, z: origin.z },
+            direction: { x: direction.x, y: direction.y, z: direction.z }
+        });
     });
 }
-
 
 export function spawnProjectileFromData(world, scene, origin, direction) {
     const originVec = new THREE.Vector3(origin.x, origin.y, origin.z);
@@ -71,7 +56,7 @@ function createProjectile(world, scene, origin, direction) {
     const colliderDesc = RAPIER.ColliderDesc.ball(0.2)
         .setRestitution(0.7)
         .setFriction(2)
-        .setDensity(5);
+        .setDensity(1000);
     world.createCollider(colliderDesc, rigidBody);
 
     const speed = 30;
